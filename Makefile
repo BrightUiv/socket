@@ -17,9 +17,11 @@ control_center.o:
 
 start:
 	echo start
+	eval './startCFprocs.sh $(PROC_NUM)'
 
 kill: 
 	echo kill
+	pkill -f ./swarm_ranging_proc
 
 clean:
 	rm *.o swarm_ranging_proc control_center
