@@ -11,10 +11,10 @@
 
 int main(int argc, char *argv[])
 {
+	printf("We have a totall of %d CF Proc.\n", PROC_NUM);
 	int sockfd = 0, n = 0;
 	char recvBuff[1024];
 	struct sockaddr_in serv_addr;
-	printf("--%d---\n",MYYY);
 	if(argc != 2)
 	{
 		printf("\n Usage: %s <ip of server> \n",argv[0]);
@@ -33,8 +33,11 @@ int main(int argc, char *argv[])
 	memset(&serv_addr, '0', sizeof(serv_addr));
 
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(50627);
 
+for(int i=0; i<PROC_NUM; i++){
+	serv_addr.sin_port = htons(50627+i);
+
+	printf("To connect to CF Proc Number %d.\n", i);
 	if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0)
 	{
 		printf("\n inet_pton error occured\n");
@@ -69,6 +72,7 @@ int main(int argc, char *argv[])
 	{
 		printf("\n Read error \n");
 	}
+}
 
 	return 0;
 }
