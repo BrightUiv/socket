@@ -8,6 +8,13 @@
 #include <string.h>
 #include <sys/types.h>
 #include <time.h>
+#include <signal.h>
+
+volatile sig_atomic_t stop; // process ctrl+c
+void handle_sigint(int sig)
+{
+	stop = 1;
+}
 
 int main(int argc, char *argv[])
 {
@@ -17,31 +24,35 @@ int main(int argc, char *argv[])
 	char sendBuff[1025];
 	time_t ticks;
 
-	if (argc < 3) {
- 		printf("Error: not enough arg.\n");
- 	  return 1; // not enough arg
+	if (argc < 3)
+	{
+		printf("Error: not enough arg.\n");
+		return 1; // not enough arg
 	}
-	if (strlen(argv[1]) == 0 || strlen(argv[2]) == 0 ) {
- 		printf("Error: empty string.\n");
- 		return 1; // empty string
+	if (strlen(argv[1]) == 0 || strlen(argv[2]) == 0)
+	{
+		printf("Error: empty string.\n");
+		return 1; // empty string
 	}
-	char* procname = argv[1];
- 	char* p;
+	char *procname = argv[1];
+	char *p;
 	errno = 0; // not 'int errno', because the '#include' already defined it
 	long arg = strtol(argv[2], &p, 10);
-	if (*p != '\0' || errno != 0) {
+	if (*p != '\0' || errno != 0)
+	{
 		printf("Error: port num.\n");
 		return 1; // In main(), returning non-zero means failure
 	}
-	
- 	if (arg < 0 || arg > 1000) {
+
+	if (arg < 0 || arg > 1000)
+	{
 		printf("Error: port num range.\n");
 		return 1;
 	}
 	int portnum = arg;
 
 	// Everything went well, print it as a regular number plus a newline
- 	printf("The proc name: %s\nThe port num: %d\n", procname, portnum);
+	printf("The proc name: %s\nThe port num: %d\n", procname, portnum);
 
 	/* creates an UN-named socket inside the kernel and returns
 	 * an integer known as socket descriptor
@@ -54,12 +65,12 @@ int main(int argc, char *argv[])
 
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serv_addr.sin_port = htons(50627+portnum);
+	serv_addr.sin_port = htons(50627 + portnum);
 
 	/* The call to the function "bind()" assigns the details specified
 	 * in the structure 『serv_addr' to the socket created in the step above
 	 */
-	bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+	bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
 	/* The call to the function "listen()" with second argument as 10 specifies
 	 * maximum number of client connections that server will queue for this listening
@@ -67,25 +78,28 @@ int main(int argc, char *argv[])
 	 */
 	listen(listenfd, 10);
 
-	while(1)
+	signal(SIGINT, handle_sigint);
+	while (!stop)
 	{
 		/* In the call to accept(), the server is put to sleep and when for an incoming
 		 * client request, the three way TCP handshake* is complete, the function accept()
 		 * wakes up and returns the socket descriptor representing the client socket.
 		 */
-		connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
+		connfd = accept(listenfd, (struct sockaddr *)NULL, NULL);
 
 		/* As soon as server gets a request from client, it prepares the date and time and
 		 * writes on the client socket through the descriptor returned by accept()
 		 */
 		ticks = time(NULL);
 		snprintf(sendBuff, sizeof(sendBuff), "%s:%s:%s:", procname, procname, procname);
-		snprintf(sendBuff+10, sizeof(sendBuff)-10, "%.24s\r\n", ctime(&ticks));
+		snprintf(sendBuff + 10, sizeof(sendBuff) - 10, "%.24s\r\n", ctime(&ticks));
 		write(connfd, sendBuff, strlen(sendBuff));
 
 		close(connfd);
 		sleep(1);
 	}
+	if (listenfd >= 0)
+	{
+		close(listenfd);
+	}
 }
-
-
