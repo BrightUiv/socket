@@ -29,21 +29,10 @@
 #define portMAX_DELAY ( TickType_t ) 0xffffffffUL
 
 typedef apr_queue_t* QueueHandle_t;
-typedef pthread_mutex_t SemaphoreHandle_t;
+// typedef pthread_mutex_t SemaphoreHandle_t;
 
-//记录对应的时间戳
-typedef union dwTime_u {
-  uint8_t raw[5];
-  uint64_t full;
-  struct {
-    uint32_t low32;
-    uint8_t high8;
-  } __attribute__((packed));
-  struct {
-    uint8_t low8;
-    uint32_t high32;
-  } __attribute__((packed));
-} dwTime_t;
+// 
+
 
 
 typedef uint32_t portTickType;

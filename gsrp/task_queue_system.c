@@ -81,7 +81,6 @@ BaseType_t xQueueReceive( QueueHandle_t xQueue,
     Ranging_Message_With_Timestamp_t* buffer = (Ranging_Message_With_Timestamp_t*)pvBuffer;
     *buffer = *ptr;
 
-
     //释放apr_queue队列之中的首地址
     free(ptr);
 

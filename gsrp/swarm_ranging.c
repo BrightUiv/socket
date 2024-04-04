@@ -8,11 +8,11 @@
 #include "system.h"
 #include "queue.h"
 #include "task.h"
-#include "adhocdeck.h"//移除注释
+
 #include "autoconf.h"
 #include "debug.h"
 #include "log.h"
-
+#include "adhocdeck.h"
 #include "routing.h"
 #include "olsr.h"
 #include "timers.h"

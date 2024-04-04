@@ -6,6 +6,7 @@
 #include "semphr.h"
 */
 #include "adhocdeck.h"
+#include <pthread.h>
 
 //#define RANGING_DEBUG_ENABLE
 
@@ -40,6 +41,22 @@
 #define NEIGHBOR_SET_HOLD_TIME (6 * RANGING_PERIOD_MAX)
 
 typedef short set_index_t;
+
+
+//记录对应的时间戳--从task_queue_system.h中移动过来
+typedef union dwTime_u {
+  uint8_t raw[5];
+  uint64_t full;
+  struct {
+    uint32_t low32;
+    uint8_t high8;
+  } __attribute__((packed));
+  struct {
+    uint8_t low8;
+    uint32_t high32;
+  } __attribute__((packed));
+} dwTime_t;
+
 
 /* Timestamp Tuple */
 typedef struct {
@@ -115,6 +132,10 @@ typedef enum {
   |  Tp  |  Rr  |  Tf  |  Re  |  ts  |
   +------+------+------+------+------+
 */
+
+//自己添加
+typedef uint32_t Time_t;
+
 typedef struct {
   uint16_t neighborAddress;
 
@@ -134,6 +155,9 @@ typedef struct {
 
   RANGING_TABLE_STATE state;
 } __attribute__((packed)) Ranging_Table_t;
+
+
+typedef pthread_mutex_t SemaphoreHandle_t;
 
 /* Ranging Table Set */
 typedef struct {
