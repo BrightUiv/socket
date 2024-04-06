@@ -74,7 +74,7 @@ static dwt_config_t uwbPhrConfig = {
 };
 
 typedef uint16_t UWB_Address_t;
-// typedef portTickType Time_t;先注释掉
+// typedef portTickType Time_t;//先注释掉，这个需要加上去
 
 /* UWB packet definition */
 typedef enum {
@@ -100,7 +100,8 @@ typedef struct {
 
 typedef void (*UWBCallback)(void *);
 
-typedef apr_queue_t* QueueHandle_t;//自己添加注释
+
+typedef apr_queue_t* QueueHandle_t;//需要自己添加这段代码
 
 typedef struct {
   UWB_MESSAGE_TYPE type;

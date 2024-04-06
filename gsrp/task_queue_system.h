@@ -28,14 +28,25 @@
 
 #define portMAX_DELAY ( TickType_t ) 0xffffffffUL
 
+
+#define RANGING_RX_QUEUE_ITEM_SIZE sizeof(Ranging_Message_With_Timestamp_t)
+#define RANGING_RX_QUEUE_SIZE 5
+
 typedef apr_queue_t* QueueHandle_t;
+static  apr_queue_t* queues[UWB_MESSAGE_TYPE_COUNT];
 // typedef pthread_mutex_t SemaphoreHandle_t;
 
 // 
 
 
+typedef uint16_t logVarId_t;
+static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
+
+static uint16_t MY_UWB_ADDRESS;
 
 typedef uint32_t portTickType;
+
+static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
 
 //不需要
 // typedef QueueHandle_t SemaphoreHandle_t;
@@ -107,4 +118,7 @@ void xQueueDestroy(apr_pool_t* pool);
 BaseType_t xQueueSendFromISR(  QueueHandle_t xQueue,
                                      const void * const pvItemToQueue,
                                      BaseType_t * const pxHigherPriorityTaskWoken);
+
+
+void uwbRegisterListener(UWB_Message_Listener_t *listener) ;
 #endif

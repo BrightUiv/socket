@@ -2,12 +2,13 @@
 #define _SWARM_RANGING_H_
 
 /*
-#include "dwTypes.h"
+
 #include "semphr.h"
 */
 #include "adhocdeck.h"
 #include <pthread.h>
-
+#include "dwTypes.h"
+#include "adhocdeck.h"
 //#define RANGING_DEBUG_ENABLE
 
 /* Function Switch */
@@ -42,20 +43,6 @@
 
 typedef short set_index_t;
 
-
-//记录对应的时间戳--从task_queue_system.h中移动过来
-typedef union dwTime_u {
-  uint8_t raw[5];
-  uint64_t full;
-  struct {
-    uint32_t low32;
-    uint8_t high8;
-  } __attribute__((packed));
-  struct {
-    uint8_t low8;
-    uint32_t high32;
-  } __attribute__((packed));
-} dwTime_t;
 
 
 /* Timestamp Tuple */
@@ -133,7 +120,7 @@ typedef enum {
   +------+------+------+------+------+
 */
 
-//自己添加
+//自己添加，无法通过引入头文件来实现，FreeRTOS.h头文件不应该被引入
 typedef uint32_t Time_t;
 
 typedef struct {
