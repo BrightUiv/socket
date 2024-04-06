@@ -58,7 +58,7 @@
 
     apr_queue_t* queue;
     apr_queue_create(&queue,10,pool);//可以存放十个指针
-
+    // queue->item_size=10;
 
     pthread_t th1,th2,th3;
 
