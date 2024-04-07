@@ -83,7 +83,7 @@ int socket_send_payload(int sockfd, const void *payload, size_t dataLength)
     return 0;
 }
 
-int socket_receive_payload(int sockfd, void **payload, size_t *payload_size)
+int socket_receive_payload(int sockfd, void **packet, size_t *dataLength)
 {
     // recv packet length
     size_t size;
@@ -94,21 +94,21 @@ int socket_receive_payload(int sockfd, void **payload, size_t *payload_size)
     }
 
     // malloc memory to recv data
-    *payload = malloc(size);
-    if (*payload == NULL)
+    *packet = malloc(size);
+    if (*packet == NULL)
     {
         perror("Failed to allocate memory for payload");
         return -1;
     }
 
     // recv data
-    if (recv(sockfd, *payload, size, 0) <= 0)
+    if (recv(sockfd, *packet, size, 0) <= 0)
     {
         perror("Failed to receive payload data");
-        free(*payload);
+        free(*packet);
         return -1;
     }
 
-    *payload_size = size;
+    *dataLength = size;
     return 0;
 }
