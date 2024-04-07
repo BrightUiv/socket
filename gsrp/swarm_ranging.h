@@ -2,11 +2,13 @@
 #define _SWARM_RANGING_H_
 
 /*
-#include "dwTypes.h"
+
 #include "semphr.h"
 */
 #include "adhocdeck.h"
-
+#include <pthread.h>
+#include "dwTypes.h"
+#include "adhocdeck.h"
 //#define RANGING_DEBUG_ENABLE
 
 /* Function Switch */
@@ -40,6 +42,8 @@
 #define NEIGHBOR_SET_HOLD_TIME (6 * RANGING_PERIOD_MAX)
 
 typedef short set_index_t;
+
+
 
 /* Timestamp Tuple */
 typedef struct {
@@ -115,6 +119,10 @@ typedef enum {
   |  Tp  |  Rr  |  Tf  |  Re  |  ts  |
   +------+------+------+------+------+
 */
+
+//自己添加，无法通过引入头文件来实现，FreeRTOS.h头文件不应该被引入
+typedef uint32_t Time_t;
+
 typedef struct {
   uint16_t neighborAddress;
 
@@ -134,6 +142,9 @@ typedef struct {
 
   RANGING_TABLE_STATE state;
 } __attribute__((packed)) Ranging_Table_t;
+
+
+typedef pthread_mutex_t SemaphoreHandle_t;
 
 /* Ranging Table Set */
 typedef struct {

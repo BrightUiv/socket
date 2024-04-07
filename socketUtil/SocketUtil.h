@@ -18,7 +18,8 @@
 
 #include <stddef.h> // For size_t
 
-typedef struct {
+typedef struct
+{
     int sockfd;
     char server_ip[INET_ADDRSTRLEN];
     int server_port;

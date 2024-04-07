@@ -1299,7 +1299,9 @@ void rangingTxCallback(void *parameters) {
   updateTfBuffer(timestamp);
 }
 
-/*
+
+//
+/*使用main()函数代替功能
 void rangingInit() {
   MY_UWB_ADDRESS = uwbGetAddress();
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);

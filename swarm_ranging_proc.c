@@ -82,8 +82,7 @@ int main(int argc, char *argv[])
 	while (!stop)
 	{
 		Socket_Packet_t *packet;
-		int result = recvSocketPacket(connfd,&packet);
-		
+		int result = recvSocketPacket(connfd, &packet);
 	}
 	if (connfd >= 0)
 	{
