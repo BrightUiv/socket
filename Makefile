@@ -47,7 +47,7 @@ clean:
 
 start:
 	echo start
-	./startCFprocs.sh $(PROC_NUM)
+	eval './startCFprocs.sh $(PROC_NUM)'
 
 kill: 
 	echo kill

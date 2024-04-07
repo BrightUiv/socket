@@ -1,3 +1,5 @@
+#ifndef SOCKET_UTIL
+#define SOCKET_UTIL
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -34,3 +36,5 @@ void receive_message(Connection conn);
 int socket_send_payload(int sockfd, const void *payload, size_t payload_size);
 
 int socket_receive_payload(int sockfd, void **payload, size_t *payload_size);
+
+#endif

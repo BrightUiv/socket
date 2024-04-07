@@ -87,9 +87,15 @@ int socket_receive_payload(int sockfd, void **packet, size_t *dataLength)
 {
     // recv packet length
     size_t size;
-    if (recv(sockfd, &size, sizeof(size), 0) <= 0)
+    int n = recv(sockfd, &size, sizeof(size), 0);
+    if (n < 0)
     {
         perror("Failed to receive payload size");
+        return -1;
+    }
+    else if (n == 0)
+    {
+        perror("recv end");
         return -1;
     }
 
