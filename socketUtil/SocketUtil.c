@@ -56,7 +56,7 @@ void receive_message(Connection conn) {
     }
 }
 
-int send_payload(int sockfd, const void *payload, size_t payload_size) {
+int socket_send_payload(int sockfd, const void *payload, size_t payload_size) {
     if (send(sockfd, &payload_size, sizeof(payload_size), 0) == -1) {
         perror("Failed to send payload size");
         return -1;
@@ -70,7 +70,7 @@ int send_payload(int sockfd, const void *payload, size_t payload_size) {
     return 0;
 }
 
-int receive_payload(int sockfd, void **payload, size_t *payload_size) {
+int socket_receive_payload(int sockfd, void **payload, size_t *payload_size) {
     if (recv(sockfd, payload_size, sizeof(*payload_size), 0) == -1) {
         perror("Failed to receive payload size");
         return -1;
