@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    size_t length;
+    size_t packetLength;
     int type;
 } Socket_Packet_Header_t;
 
@@ -17,6 +17,6 @@ typedef struct
 
 int sendSocketPacket(int sockfd, Socket_Packet_t *packet);
 
-int recvSocketPacket(int socketfd, Socket_Packet_t **packet);
+int recvSocketPacket(int sockfd, Socket_Packet_t **packet);
 
 #endif // MESSAGE_STRUCT
