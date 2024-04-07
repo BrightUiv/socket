@@ -9,8 +9,10 @@
 #include <sys/types.h>
 #include <time.h>
 #include <signal.h>
+#include "message_struct.h"
 
 volatile sig_atomic_t stop; // process ctrl+c
+
 void handle_sigint(int sig)
 {
 	stop = 1;
@@ -72,32 +74,22 @@ int main(int argc, char *argv[])
 	 */
 	bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
-	/* The call to the function "listen()" with second argument as 10 specifies
-	 * maximum number of client connections that server will queue for this listening
-	 * socket.
-	 */
 	listen(listenfd, 10);
+	// current need only 1 client to connect
+	connfd = accept(listenfd, (struct sockaddr *)NULL, NULL);
 
 	signal(SIGINT, handle_sigint);
 	while (!stop)
 	{
-		/* In the call to accept(), the server is put to sleep and when for an incoming
-		 * client request, the three way TCP handshake* is complete, the function accept()
-		 * wakes up and returns the socket descriptor representing the client socket.
-		 */
-		connfd = accept(listenfd, (struct sockaddr *)NULL, NULL);
-
-		/* As soon as server gets a request from client, it prepares the date and time and
-		 * writes on the client socket through the descriptor returned by accept()
-		 */
-		ticks = time(NULL);
-		snprintf(sendBuff, sizeof(sendBuff), "%s:%s:%s:", procname, procname, procname);
-		snprintf(sendBuff + 10, sizeof(sendBuff) - 10, "%.24s\r\n", ctime(&ticks));
-		write(connfd, sendBuff, strlen(sendBuff));
-
-		close(connfd);
-		sleep(1);
+		Socket_Packet_t *packet;
+		int result = recvSocketPacket(connfd,&packet);
+		
 	}
+	if (connfd >= 0)
+	{
+		close(connfd);
+	}
+
 	if (listenfd >= 0)
 	{
 		close(listenfd);
