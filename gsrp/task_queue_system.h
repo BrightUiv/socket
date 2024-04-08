@@ -43,6 +43,8 @@ static UWB_Message_Listener_t listener;
 
 void rangingRxCallback(void *parameters);
 void rangingTxCallback(void *parameters);
+void neighborSetInit(Neighbor_Set_t *set);
+void neighborBitSetInit(Neighbor_Bit_Set_t *bitSet);
 //----------------------------------------------------------------------------------------------------------
 
 
