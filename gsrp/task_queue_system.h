@@ -32,11 +32,22 @@
 #define RANGING_RX_QUEUE_ITEM_SIZE sizeof(Ranging_Message_With_Timestamp_t)
 #define RANGING_RX_QUEUE_SIZE 5
 
+
+//---------------------------------------------------------------------------------------------------------
+Ranging_Table_Set_t rangingTableSet;
+static Neighbor_Set_t neighborSet;
+static SemaphoreHandle_t TfBufferMutex;
+// typedef pthread_mutex_t SemaphoreHandle_t;--只能在swarmRanging.h之中进行修改
+static UWB_Message_Listener_t listener;
+
+
+void rangingRxCallback(void *parameters);
+void rangingTxCallback(void *parameters);
+//----------------------------------------------------------------------------------------------------------
+
+
 typedef apr_queue_t* QueueHandle_t;
 static  apr_queue_t* queues[UWB_MESSAGE_TYPE_COUNT];
-// typedef pthread_mutex_t SemaphoreHandle_t;
-
-// 
 
 
 typedef uint16_t logVarId_t;
@@ -48,8 +59,7 @@ typedef uint32_t portTickType;
 
 static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
 
-//不需要
-// typedef QueueHandle_t SemaphoreHandle_t;
+
 
 
 /**
@@ -102,23 +112,25 @@ void vTaskDelay( const TickType_t xTicksToDelay );
 
 // BaseType_t  ( QueueHandle_t xQueue, void * const pvBuffer,TickType_t xTicksToWait );
 
-//待优化：设置为从apr_queue队列之中获取队首的元素指针，目前为rangingMessage_with_timestamp类型
+//实现
 BaseType_t xQueueReceive( QueueHandle_t xQueue,
                           void * const pvBuffer,
                           TickType_t xTicksToWait );
 
-//待修改:传入一个队列的长度和每个节点元素的大小
+//实现
 QueueHandle_t xQueueCreate( const uint32_t uxQueueLength,//指针队列的大小
                                       const uint32_t uxItemSize);//uxItemSize没用
 
 //自己添加，实现，销毁内存池，释放所需要的所有资源
 void xQueueDestroy(apr_pool_t* pool);
 
-//待优化：使用xQueueSend()往队列之中存放数据
+//实现
 BaseType_t xQueueSendFromISR(  QueueHandle_t xQueue,
                                      const void * const pvItemToQueue,
                                      BaseType_t * const pxHigherPriorityTaskWoken);
 
 
+//有些需要修改
 void uwbRegisterListener(UWB_Message_Listener_t *listener) ;
+
 #endif

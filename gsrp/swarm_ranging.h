@@ -43,6 +43,9 @@
 
 typedef short set_index_t;
 
+//----------------------------------------------------------------------
+typedef pthread_mutex_t SemaphoreHandle_t;
+//----------------------------------------------------------------------
 
 
 /* Timestamp Tuple */
@@ -144,7 +147,7 @@ typedef struct {
 } __attribute__((packed)) Ranging_Table_t;
 
 
-typedef pthread_mutex_t SemaphoreHandle_t;
+
 
 /* Ranging Table Set */
 typedef struct {
