@@ -14,7 +14,7 @@ int main(int argc, char const *argv[]) {
     apr_pool_create(&pool, NULL);
     
     // 创建队列，大小为 5
-    apr_queue_create(&queue, 5, pool);
+    apr_queue_create(&queue, 5,pool);
     
     // 向队列中添加元素
     const char *msg = "Hello APR Queue";
