@@ -10,16 +10,17 @@
 #include <time.h>
 #include <signal.h>
 #include "message_struct.h"
-#include <sys/epoll.h>
+#include <poll.h>
 
 volatile sig_atomic_t stop; // process ctrl+c
 int listenfd = -1;
 
+#define TIMEOUT -1 // Poll wait forever
 #define MAX_CLIENTS 1024
 
 typedef struct
 {
-	int fds[MAX_CLIENTS];
+	struct pollfd fds[MAX_CLIENTS + 1];
 	int count;
 } ClientManager;
 
@@ -30,11 +31,13 @@ void initClientManager(ClientManager *manager)
 	manager->count = 0;
 	for (int i = 0; i < MAX_CLIENTS; ++i)
 	{
-		manager->fds[i] = -1; // 初始化为无效的文件描述符
+		manager->fds[i].fd = -1;
+		manager->fds[i].events = 0;
+		manager->fds[i].revents = 0;
 	}
 }
 
-void accept_new_connection(int epoll_fd, int listenfd, ClientManager *manager)
+void accept_new_connection()
 {
 	struct sockaddr_in client_addr;
 	socklen_t client_len = sizeof(client_addr);
@@ -45,22 +48,21 @@ void accept_new_connection(int epoll_fd, int listenfd, ClientManager *manager)
 		return;
 	}
 
-	if (manager->count < MAX_CLIENTS)
+	// Find an empty slot in fds
+	for (int i = 1; i < MAX_CLIENTS + 1; i++)
 	{
-		manager->fds[manager->count++] = connfd;
-	}
-	else
-	{
-		// 超出最大客户端连接数，关闭新的连接
-		close(connfd);
+		if (manager.fds[i].fd == -1)
+		{
+			manager.fds[i].fd = connfd;
+			manager.fds[i].events = POLLIN;
+			manager.count++;
+			break;
+		}
 	}
 
-	struct epoll_event ev;
-	ev.events = EPOLLIN;
-	ev.data.fd = connfd;
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, connfd, &ev) == -1)
+	if (manager.count >= MAX_CLIENTS)
 	{
-		perror("epoll_ctl: add connfd");
+		// Reached max clients, reject further connections
 		close(connfd);
 	}
 }
@@ -69,12 +71,13 @@ void handle_sigint(int sig)
 {
 	stop = 1;
 
-	// 遍历客户端连接并关闭它们
-	for (int i = 0; i < manager.count; i++)
+	// Closing all connections
+	for (int i = 0; i < MAX_CLIENTS + 1; i++)
 	{
-		if (manager.fds[i] != -1)
+		if (manager.fds[i].fd >= 0)
 		{
-			close(manager.fds[i]);
+			close(manager.fds[i].fd);
+			manager.fds[i].fd = -1; // Mark as closed
 		}
 	}
 }
@@ -82,6 +85,16 @@ void handle_sigint(int sig)
 void setup_signal_handler()
 {
 	signal(SIGINT, handle_sigint);
+}
+
+void close_and_clear_client(int idx)
+{
+	if (manager.fds[idx].fd >= 0)
+	{
+		close(manager.fds[idx].fd); // Close the connection
+		manager.fds[idx].fd = -1;	// Mark as closed
+		manager.count--;
+	}
 }
 
 int init_server_socket(int port)
@@ -112,15 +125,18 @@ int init_server_socket(int port)
 		close(listenfd);
 		exit(EXIT_FAILURE);
 	}
-
+	// Set listenfd to manager
+	manager.fds[0].fd = listenfd;
+	manager.fds[0].events = POLLIN;
 	return listenfd;
 }
 
-void handle_client_data(int epoll_fd, int connfd)
+void handle_client_data(int idx)
 {
+	int connfd = manager.fds[idx].fd;
 	Socket_Packet_t *packet = NULL;
 	int result = recvSocketPacket(connfd, &packet);
-	if (result == 0 && packet != NULL)
+	if (result >= 0 && packet != NULL)
 	{
 		// 成功接收到消息，打印消息内容
 		printf("from %d Received message: %s\n", connfd, packet->payload);
@@ -139,68 +155,41 @@ void handle_client_data(int epoll_fd, int connfd)
 	}
 	else
 	{
-		// 处理错误或关闭连接
-		if (result == -1)
+		if (result == 0 || errno == ECONNRESET)
 		{
-			perror("client close connection");
+			printf("Client disconnected\n");
 		}
-
-		// 从epoll的监听列表中移除并关闭连接
-		if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, connfd, NULL) == -1)
+		else
 		{
-			perror("epoll_ctl: remove connfd failed");
+			// perror("recv error");
 		}
-		close(connfd);
+		close_and_clear_client(idx);
 	}
 }
 
-int init_epoll(int listenfd)
+void run_poll_loop()
 {
-	int epoll_fd = epoll_create1(0);
-	if (epoll_fd == -1)
-	{
-		perror("epoll_create1 failed");
-		close(listenfd); // 确保在退出前关闭listenfd
-		exit(EXIT_FAILURE);
-	}
-
-	struct epoll_event ev;
-	ev.events = EPOLLIN;
-	ev.data.fd = listenfd;
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, listenfd, &ev) == -1)
-	{
-		perror("epoll_ctl failed");
-		close(listenfd);
-		close(epoll_fd);
-		exit(EXIT_FAILURE);
-	}
-
-	return epoll_fd;
-}
-
-void run_epoll_loop(int epoll_fd, int listenfd, ClientManager *manager)
-{
-	const int MAX_EVENTS = 10;
-	struct epoll_event events[MAX_EVENTS];
-
 	while (!stop)
 	{
-		int nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
-		if (nfds == -1)
+		int ret = poll(manager.fds, manager.count + 1, TIMEOUT); // +1 for listenfd
+		if (ret < 0)
 		{
-			perror("epoll_wait");
-			exit(EXIT_FAILURE);
+			perror("poll");
+			if (errno == EINTR)
+				continue; // Interrupted by signal
+			break;
 		}
 
-		for (int n = 0; n < nfds; ++n)
+		if (manager.fds[0].revents & POLLIN)
 		{
-			if (events[n].data.fd == listenfd)
+			accept_new_connection();
+		}
+
+		for (int i = 1; i < MAX_CLIENTS + 1; i++)
+		{
+			if (manager.fds[i].fd != -1 && manager.fds[i].revents & POLLIN)
 			{
-				accept_new_connection(epoll_fd, listenfd, manager);
-			}
-			else
-			{
-				handle_client_data(epoll_fd, events[n].data.fd);
+				handle_client_data(i);
 			}
 		}
 	}
@@ -241,11 +230,10 @@ int main(int argc, char *argv[])
 	initClientManager(&manager);
 
 	setup_signal_handler();
-	listenfd = init_server_socket(50627 + portnum);
-	int epoll_fd = init_epoll(listenfd);
 
-	run_epoll_loop(epoll_fd, listenfd, &manager);
+	listenfd = init_server_socket(50627 + portnum);
+
+	run_poll_loop(&manager);
 
 	close(listenfd);
-	close(epoll_fd);
 }
