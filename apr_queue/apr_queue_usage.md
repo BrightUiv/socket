@@ -20,39 +20,37 @@
 
 ### 二、apr-util-1.6.3.tar.gz的安装
 
-- sudo mv /home/mao/apr-util-1.6.3.tar.gz /usr/local/src/安装apr-util文件的安装位置
+- 下载apr-util-1.6.3.tar.gz文件到合适的安装位置
 - sudo tar -xvzf apr-util-1.6.3.tar.gz解压apr-util文件夹
 - libapr-1和libapr1区别
   - **`libapr-1`** **`libapr-1`** 通常指的是APR库的实际动态链接库（.so或.dll文件）或静态库（.a或.lib文件）。这些库文件是编译时链接和运行时加载的实际二进制文件。`libapr-1` 是 Apache Portable Runtime (APR) 库的一部分
   - **`libapr1`** **`libapr1`** 通常指的是APR库的软件包名称，在基于Debian（如Ubuntu）的系统中使用。软件包包括了库文件（如`libapr-1.so`），可能还包括其他相关文件，如配置文件或文档。
 - sudo ./configure --with-apr=/usr/lib/x86_64-linux-gnu/<出现错误，with-apr=没有正确指定位置>
 - sudo ./configure --with-apr=/usr/bin/apr-1-config
-- sudo make(未安装库)
+- sudo make #未安装库
 - sudo apt-get update
 - sudo apt-get install libexpat1-dev
 - sudo make install
   - 出现结果：
   - /usr/bin/install -c -m 644 aprutil.exp /usr/local/apr/lib
     /usr/bin/install -c -m 755 apu-config.out /usr/local/apr/bin/apu-1-config
-- gcc -o apr_queue_test  apr_queue_test.c -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1，发现报错
+- gcc -o apr_queue_test  apr_queue_test.c -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1 #发现报错
 -  cd /etc/ld.so.conf.d <发现缺少apr.conf文件>
-- sudo vim apr.conf《添加路径：/usr/local/apr/lib，“:wq”保存退出》
-- sudo ldconfig      <更新动态链接器的缓存>
-- ldconfig -p | grep libname    <验证更改>
-- gcc -o apr_queue_test  apr_queue_test.c -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1 -lpthread<执行成功>
-  - -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1<是为了链接头文件>
+- sudo vim apr.conf	#添加路径：/usr/local/apr/lib，“:wq”保存退出
+- sudo ldconfig		#更新动态链接器的缓存
+- ldconfig -p | grep libname    #验证更改
+- gcc -o apr_queue_test  apr_queue_test.c -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1 -lpthread	#执行成功
+  - -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1	#是为了链接头文件
   - -lapr-1 -laprutil-1<`-lapr-1`和`-laprutil-1`这两条命令的作用是在编译过程中将APR库和APR-util库链接到你的程序>
 
 
 
 ### 三、重新编译apr-util库
 
-- 将apr-util-1.6.3/include/misc/apr_queue.c文件中删去
-- 将apr-util-1.6.3/include/apr_queue.h文件删去
-- sudo cp apr_queue.c  /usr/local/src/apr-util-1.6.3/misc
-- sudo cp apr_queue.h  /usr/local/src/apr-util-1.6.3/include
-- make clean
-- sudo ./configure --with-apr=/usr/bin/apr-1-config
+- 替换或者修改apr-util-1.6.3/include/misc/apr_queue.c文件
+- 替换或者修改apr-util-1.6.3/include/apr_queue.h文件
+- make clean	#可选步骤
+- sudo ./configure --with-apr=/usr/bin/apr-1-config	#可选步骤
 - sudo make
 - sudo make install
 - 编译成功
