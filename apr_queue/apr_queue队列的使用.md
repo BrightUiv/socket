@@ -39,7 +39,7 @@
 - sudo vim apr.conf《添加路径：/usr/local/apr/lib，“:wq”保存退出》
 - sudo ldconfig      <更新动态链接器的缓存>
 - ldconfig -p | grep libname    <验证更改>
-- gcc -o apr_queue_test  apr_queue_test.c -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1<执行成功>
+- gcc -o apr_queue_test  apr_queue_test.c -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1 -lpthread<执行成功>
   - -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1<是为了链接头文件>
   - -lapr-1 -laprutil-1<`-lapr-1`和`-laprutil-1`这两条命令的作用是在编译过程中将APR库和APR-util库链接到你的程序>
 
