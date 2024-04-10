@@ -5,6 +5,99 @@
 apr_pool_t *pool;
 static QueueHandle_t rxQueue;
 
+//--------------------------------------------------------------------------------------
+
+static Ranging_Table_t EMPTY_RANGING_TABLE = {
+    .neighborAddress = UWB_DEST_EMPTY,
+    .Rp.timestamp.full = 0,
+    .Rp.seqNumber = 0,
+    .Tp.timestamp.full = 0,
+    .Tp.seqNumber = 0,
+    .Rf.timestamp.full = 0,
+    .Rf.seqNumber = 0,
+    .Tf.timestamp.full = 0,
+    .Tf.seqNumber = 0,
+    .Re.timestamp.full = 0,
+    .Re.seqNumber = 0,
+    .latestReceived.timestamp.full = 0,
+    .latestReceived.seqNumber = 0,
+    .TrRrBuffer.cur = 0,
+    .TrRrBuffer.latest = 0,
+    .state = RANGING_STATE_S1,
+    .period = RANGING_PERIOD,
+    .nextExpectedDeliveryTime = M2T(RANGING_PERIOD),
+    .expirationTime = M2T(RANGING_TABLE_HOLD_TIME),
+    .lastSendTime = 0,
+    .distance = -1};
+
+    
+void rangingRxCallback(void *parameters)
+{
+  // DEBUG_PRINT("rangingRxCallback \n");
+
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
+
+  dwTime_t rxTime;
+//   dwt_readrxtimestamp((uint8_t *)&rxTime.raw);
+  Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
+//   rxMessageWithTimestamp.rxTime = rxTime;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload; // 将UWB_Packet类型的packet转换为Ranging_Message类型的
+  rxMessageWithTimestamp.rangingMessage = *rangingMessage;
+
+  xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
+}
+
+void rangingTxCallback(void *parameters)
+{
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
+
+  dwTime_t txTime;
+//   dwt_readtxtimestamp((uint8_t *)&txTime.raw);
+
+  Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
+//   updateTfBuffer(timestamp);
+}
+
+void neighborBitSetInit(Neighbor_Bit_Set_t *bitSet)
+{
+  bitSet->bits = 0;
+  bitSet->size = 0;
+}
+
+void neighborSetInit(Neighbor_Set_t *set)
+{
+  set->size = 0;
+  set->mu = xSemaphoreCreateMutex();
+  neighborBitSetInit(&set->oneHop);
+  neighborBitSetInit(&set->twoHop);
+  set->neighborNewHooks.hook = NULL;
+  set->neighborNewHooks.next = NULL;
+  set->neighborExpirationHooks.hook = NULL;
+  set->neighborExpirationHooks.next = NULL;
+  set->neighborTopologyChangeHooks.hook = NULL;
+  set->neighborTopologyChangeHooks.next = NULL;
+  for (UWB_Address_t neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++)
+  {
+    set->expirationTime[neighborAddress] = 0;
+    neighborBitSetInit(&set->twoHopReachSets[neighborAddress]);
+  }
+}
+
+
+/* Ranging Table Set Operations */
+void rangingTableSetInit(Ranging_Table_Set_t *set) {
+  set->mu = xSemaphoreCreateMutex();
+  set->size = 0;
+  for (int i = 0; i < RANGING_TABLE_SIZE_MAX; i++) {
+    set->tables[i] = EMPTY_RANGING_TABLE;
+  }
+}
+
+//--------------------------------------------------------------------------------------
+
 //休眠对应的秒数
 void vTaskDelay( const TickType_t xTicksToDelay ){
     usleep(1000000 * (xTicksToDelay));
@@ -44,7 +137,6 @@ QueueHandle_t xQueueCreate( const uint32_t uxQueueLength,
     apr_queue_create(&queue, uxQueueLength, uxItemSize,pool);//修改后源码后的apr_queue_create()函数
 
     // queue->item_size=uxItemSize;封装直接修改会报错
-
     return queue;
 }
 
@@ -123,49 +215,49 @@ void uwbRegisterListener(UWB_Message_Listener_t *listener) {
 
 //实现rangingInit()的功能，
 int main(){
-
-
     // MY_UWB_ADDRESS = uwbGetAddress();
-    // rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
-    // neighborSetInit(&neighborSet);
-    // // neighborSetEvictionTimer = xTimerCreate("neighborSetEvictionTimer",
-    // //                                       M2T(NEIGHBOR_SET_HOLD_TIME / 2),
-    // //                                       pdTRUE,
-    // //                                       (void *) 0,
-    // //                                       neighborSetClearExpireTimerCallback);
-    // // xTimerStart(neighborSetEvictionTimer, M2T(0));
-    // rangingTableSetInit(&rangingTableSet);
-    // // rangingTableSetEvictionTimer = xTimerCreate("rangingTableSetEvictionTimer",
-    // //                                           M2T(RANGING_TABLE_HOLD_TIME / 2),
-    // //                                           pdTRUE,
-    // //                                           (void *) 0,
-    // //                                           rangingTableSetClearExpireTimerCallback);
-    // // xTimerStart(rangingTableSetEvictionTimer, M2T(0));
-    // TfBufferMutex = xSemaphoreCreateMutex();
+    rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
+    neighborSetInit(&neighborSet);
+    // neighborSetEvictionTimer = xTimerCreate("neighborSetEvictionTimer",
+    //                                       M2T(NEIGHBOR_SET_HOLD_TIME / 2),
+    //                                       pdTRUE,
+    //                                       (void *) 0,
+    //                                       neighborSetClearExpireTimerCallback);
+    // xTimerStart(neighborSetEvictionTimer, M2T(0));
+    rangingTableSetInit(&rangingTableSet);
+    // rangingTableSetEvictionTimer = xTimerCreate("rangingTableSetEvictionTimer",
+    //                                           M2T(RANGING_TABLE_HOLD_TIME / 2),
+    //                                           pdTRUE,
+    //                                           (void *) 0,
+    //                                           rangingTableSetClearExpireTimerCallback);
+    // xTimerStart(rangingTableSetEvictionTimer, M2T(0));
+    TfBufferMutex = xSemaphoreCreateMutex();
 
-    // listener.type = UWB_RANGING_MESSAGE;
-    // listener.rxQueue = NULL; // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
-    // listener.rxCb = rangingRxCallback;
-    // listener.txCb = rangingTxCallback;
-    // uwbRegisterListener(&listener);
+    listener.type = UWB_RANGING_MESSAGE;
+    listener.rxQueue = NULL; // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
+    listener.rxCb = rangingRxCallback;
+    listener.txCb = rangingTxCallback;
+    uwbRegisterListener(&listener);
 
-    // idVelocityX = 0;
-    // idVelocityY = 0;
-    // idVelocityZ = 0;
-
-    // // xTaskCreate(uwbRangingTxTask, ADHOC_DECK_RANGING_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
-    // //           ADHOC_DECK_TASK_PRI, &uwbRangingTxTaskHandle);
-    // // xTaskCreate(uwbRangingRxTask, ADHOC_DECK_RANGING_RX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
-    // //           ADHOC_DECK_TASK_PRI, &uwbRangingRxTaskHandle);
+    idVelocityX = 0;
+    idVelocityY = 0;
+    idVelocityZ = 0;
 
 
-    QueueHandle_t xQueue=xQueueCreate(5,0);
+    // xTaskCreate(uwbRangingTxTask, ADHOC_DECK_RANGING_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
+    //           ADHOC_DECK_TASK_PRI, &uwbRangingTxTaskHandle);
+    // xTaskCreate(uwbRangingRxTask, ADHOC_DECK_RANGING_RX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
+    //           ADHOC_DECK_TASK_PRI, &uwbRangingRxTaskHandle);
+
+    return 0;
+}
+
+
+/*     QueueHandle_t xQueue=xQueueCreate(5,0);
     BaseType_t xHigherPriorityTaskWokenValue = 1; // 创建并初始化变量
     BaseType_t * const pxHigherPriorityTaskWoken = &xHigherPriorityTaskWokenValue; // 将变量的地址赋给指针
     Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
     xQueueSendFromISR(xQueue,&rxMessageWithTimestamp,pxHigherPriorityTaskWoken);//向队列之中存入一个元素
     xQueueReceive(xQueue,&rxMessageWithTimestamp,1);
-    xQueueDestroy(pool);
-    return 0;
-}
+    xQueueDestroy(pool); */
 

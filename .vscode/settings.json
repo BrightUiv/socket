@@ -17,4 +17,16 @@
     "editor.suggestSelection": "recentlyUsed",
     "window.dialogStyle": "custom",
     "debug.showBreakpointsInOverviewRuler": true,
+    "C Function Documentation": {
+        "prefix": "doc",
+        "body": [
+            "/**",
+            " * $1",
+            " * ",
+            " * @param $2",
+            " * @return $3",
+            " */"
+        ],
+        "description": "Document a C function."
+    }
 }

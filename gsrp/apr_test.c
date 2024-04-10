@@ -29,18 +29,17 @@
     }
 
     pthread_t thread_id = pthread_self();
-    printf("线程id为：%lu ,出队元素为 %d \n",(unsigned long)thread_id,*ptr);
+    printf("消费者线程id为：%lu ,出队元素为 %d \n",(unsigned long)thread_id,*ptr);
     
  }
  void * producer(void* args){
     apr_queue_t * queue=(apr_queue_t *)args;
     usleep(5*1000000);//休眠5s保证消费者阻塞
 
-/*     unsigned int size1=apr_queue_size(queue);
-    printf("生产值线程：队列之中还剩元素 %u 个\n",size); */
     
     int data=10;
-
+    //------------------------------------------------------------------------------
+    //唤醒第一个消费者线程
     apr_status_t rv;
     rv=apr_queue_push(queue,&data);
 
@@ -48,6 +47,14 @@
     pthread_t thread_id = pthread_self();
     printf("生产者线程，线程id为 %lu 插入之后：队列之中还剩元素 %u 个\n",(unsigned long)thread_id,size2);
 
+    //------------------------------------------------------------------------------
+    //唤醒第二个消费者线程
+    usleep(3*1000000);//休眠5s保证消费者阻塞
+    data=11;
+    rv=apr_queue_push(queue,&data);
+    size2=apr_queue_size(queue);
+    thread_id = pthread_self();
+    printf("生产者线程，线程id为 %lu 插入之后：队列之中还剩元素 %u 个\n",(unsigned long)thread_id,size2);
     
  }
  int main(){
@@ -57,7 +64,7 @@
     apr_pool_create(&pool,NULL);//NULL的位置代表的是父内存池
 
     apr_queue_t* queue;
-    apr_queue_create(&queue,10,pool);//可以存放十个指针
+    apr_queue_create(&queue,10,4,pool);//可以存放十个指针
     // queue->item_size=10;
 
     pthread_t th1,th2,th3;
