@@ -1,4 +1,3 @@
-
-swarm_ranging.o: gsrp/swarm_ranging.c
-	$(CC) $(CFLAGS) -Igsrp/libdw3000 -o swarm_ranging.o gsrp/swarm_ranging.c
+swarm: swarm_ranging.c
+	$(CC) $(CFLAGS) -Ilibdw3000 -o swarm_ranging.o swarm_ranging.c
 
