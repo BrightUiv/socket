@@ -15,6 +15,12 @@
 /* Function Switch */
 //#define UWB_ENABLE_PHR_EXT_MODE
 
+//----------------------------------------------------------------------------------------------------------------------------
+#include "apr_queue.h"
+typedef apr_queue_t* QueueHandle_t;//需要自己添加这段代码，存在争议
+//----------------------------------------------------------------------------------------------------------------------------
+
+
 #define UWB_SPEED_OF_LIGHT 299702547
 #define UWB_MAX_TIMESTAMP 1099511627776  // 2**40
 #define UWB_TX_ANT_DLY 16385
@@ -101,7 +107,7 @@ typedef struct {
 typedef void (*UWBCallback)(void *);
 
 
-typedef apr_queue_t* QueueHandle_t;//需要自己添加这段代码
+
 
 typedef struct {
   UWB_MESSAGE_TYPE type;
