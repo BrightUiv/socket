@@ -16,7 +16,7 @@ volatile sig_atomic_t stop; // process ctrl+c
 int listenfd = -1;
 
 #define TIMEOUT -1 // Poll wait forever
-#define MAX_CLIENTS 1024
+#define MAX_CLIENTS 20
 
 typedef struct
 {
@@ -47,18 +47,9 @@ void accept_new_connection()
 		perror("accept");
 		return;
 	}
-
-	// Find an empty slot in fds
-	for (int i = 1; i < MAX_CLIENTS + 1; i++)
-	{
-		if (manager.fds[i].fd == -1)
-		{
-			manager.fds[i].fd = connfd;
-			manager.fds[i].events = POLLIN;
-			manager.count++;
-			break;
-		}
-	}
+	manager.count++;
+	manager.fds[manager.count].fd = connfd;
+	manager.fds[manager.count].events = POLLIN;
 
 	if (manager.count >= MAX_CLIENTS)
 	{
@@ -72,7 +63,7 @@ void handle_sigint(int sig)
 	stop = 1;
 
 	// Closing all connections
-	for (int i = 0; i < MAX_CLIENTS + 1; i++)
+	for (int i = 0; i < manager.count + 1; i++)
 	{
 		if (manager.fds[i].fd >= 0)
 		{
@@ -93,7 +84,6 @@ void close_and_clear_client(int idx)
 	{
 		close(manager.fds[idx].fd); // Close the connection
 		manager.fds[idx].fd = -1;	// Mark as closed
-		manager.count--;
 	}
 }
 
@@ -119,7 +109,7 @@ int init_server_socket(int port)
 		exit(EXIT_FAILURE);
 	}
 
-	if (listen(listenfd, 20) < 0)
+	if (listen(listenfd, MAX_CLIENTS) < 0)
 	{
 		perror("listen failed");
 		close(listenfd);
@@ -176,7 +166,9 @@ void run_poll_loop()
 		{
 			perror("poll");
 			if (errno == EINTR)
+			{
 				continue; // Interrupted by signal
+			}
 			break;
 		}
 
@@ -185,7 +177,7 @@ void run_poll_loop()
 			accept_new_connection();
 		}
 
-		for (int i = 1; i < MAX_CLIENTS + 1; i++)
+		for (int i = 1; i < manager.count + 1; i++)
 		{
 			if (manager.fds[i].fd != -1 && manager.fds[i].revents & POLLIN)
 			{

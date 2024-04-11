@@ -2,8 +2,9 @@
 
 #### 一、安装apr队列
 
-- sudo apt update
+- sudo apt update	#Ubuntu安装命令
 - sudo apt install libapr1 libapr1-dev
+- brew install apr	#MacOS 安装命令
 
   - `libapr1`：是Apache Portable Runtime (APR) 库的==运行时包==，提供一套API，这套API旨在提供一种在各种操作系统平台上运行的方式，以实现高级编程任务，如文件系统操作、网络通信和线程管理。
 
@@ -25,8 +26,8 @@
 - libapr-1和libapr1区别
   - **`libapr-1`** **`libapr-1`** 通常指的是APR库的实际动态链接库（.so或.dll文件）或静态库（.a或.lib文件）。这些库文件是编译时链接和运行时加载的实际二进制文件。`libapr-1` 是 Apache Portable Runtime (APR) 库的一部分
   - **`libapr1`** **`libapr1`** 通常指的是APR库的软件包名称，在基于Debian（如Ubuntu）的系统中使用。软件包包括了库文件（如`libapr-1.so`），可能还包括其他相关文件，如配置文件或文档。
-- sudo ./configure --with-apr=/usr/lib/x86_64-linux-gnu/<出现错误，with-apr=没有正确指定位置>
-- sudo ./configure --with-apr=/usr/bin/apr-1-config
+- sudo ./configure --with-apr=/usr/local/opt/apr   #MacOS文件路径
+- sudo ./configure --with-apr=/usr/bin/apr-1-config  #Ubuntu文件路径
 - sudo make #未安装库
 - sudo apt-get update
 - sudo apt-get install libexpat1-dev
@@ -47,7 +48,7 @@
 
 ### 三、重新编译apr-util库
 
-- 替换或者修改apr-util-1.6.3/include/misc/apr_queue.c文件
+- 替换或者修改apr-util-1.6.3/misc/apr_queue.c文件
 - 替换或者修改apr-util-1.6.3/include/apr_queue.h文件
 - make clean	#可选步骤
 - sudo ./configure --with-apr=/usr/bin/apr-1-config	#可选步骤
