@@ -5,31 +5,7 @@
 apr_pool_t *pool;
 static QueueHandle_t rxQueue;
 
-//--------------------------------------------------------------------------------------
-
-static Ranging_Table_t EMPTY_RANGING_TABLE = {
-    .neighborAddress = UWB_DEST_EMPTY,
-    .Rp.timestamp.full = 0,
-    .Rp.seqNumber = 0,
-    .Tp.timestamp.full = 0,
-    .Tp.seqNumber = 0,
-    .Rf.timestamp.full = 0,
-    .Rf.seqNumber = 0,
-    .Tf.timestamp.full = 0,
-    .Tf.seqNumber = 0,
-    .Re.timestamp.full = 0,
-    .Re.seqNumber = 0,
-    .latestReceived.timestamp.full = 0,
-    .latestReceived.seqNumber = 0,
-    .TrRrBuffer.cur = 0,
-    .TrRrBuffer.latest = 0,
-    .state = RANGING_STATE_S1,
-    .period = RANGING_PERIOD,
-    .nextExpectedDeliveryTime = M2T(RANGING_PERIOD),
-    .expirationTime = M2T(RANGING_TABLE_HOLD_TIME),
-    .lastSendTime = 0,
-    .distance = -1};
-
+//-----------------------------------------------------------------------------------------------------------------
     
 void rangingRxCallback(void *parameters)
 {
@@ -58,45 +34,16 @@ void rangingTxCallback(void *parameters)
 //   dwt_readtxtimestamp((uint8_t *)&txTime.raw);
 
   Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
-//   updateTfBuffer(timestamp);
+  updateTfBuffer(timestamp);
 }
 
-void neighborBitSetInit(Neighbor_Bit_Set_t *bitSet)
-{
-  bitSet->bits = 0;
-  bitSet->size = 0;
+void uwbRegisterListener(UWB_Message_Listener_t *listener) {
+//   ASSERT(listener->type < UWB_MESSAGE_TYPE_COUNT);
+  queues[listener->type] = listener->rxQueue;
+//   listeners[listener->type] = *listener;感觉存在些问题
 }
 
-void neighborSetInit(Neighbor_Set_t *set)
-{
-  set->size = 0;
-  set->mu = xSemaphoreCreateMutex();
-  neighborBitSetInit(&set->oneHop);
-  neighborBitSetInit(&set->twoHop);
-  set->neighborNewHooks.hook = NULL;
-  set->neighborNewHooks.next = NULL;
-  set->neighborExpirationHooks.hook = NULL;
-  set->neighborExpirationHooks.next = NULL;
-  set->neighborTopologyChangeHooks.hook = NULL;
-  set->neighborTopologyChangeHooks.next = NULL;
-  for (UWB_Address_t neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++)
-  {
-    set->expirationTime[neighborAddress] = 0;
-    neighborBitSetInit(&set->twoHopReachSets[neighborAddress]);
-  }
-}
-
-
-/* Ranging Table Set Operations */
-void rangingTableSetInit(Ranging_Table_Set_t *set) {
-  set->mu = xSemaphoreCreateMutex();
-  set->size = 0;
-  for (int i = 0; i < RANGING_TABLE_SIZE_MAX; i++) {
-    set->tables[i] = EMPTY_RANGING_TABLE;
-  }
-}
-
-//--------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------
 
 //休眠对应的秒数
 void vTaskDelay( const TickType_t xTicksToDelay ){
@@ -104,7 +51,7 @@ void vTaskDelay( const TickType_t xTicksToDelay ){
 }
 
 //获取当前系统对应的时间，返回的是秒数
-TickType_t xTaskGetTickCount( void ){
+TickType_t xTaskGetTickCount(){
     struct timespec ts;
     // 获取当前系统时间
     if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
@@ -205,45 +152,86 @@ void xSemaphoreDestroyMutex(SemaphoreHandle_t mutex){
     pthread_mutex_destroy(&mutex);
 }
 
-void uwbRegisterListener(UWB_Message_Listener_t *listener) {
-//   ASSERT(listener->type < UWB_MESSAGE_TYPE_COUNT);
-  queues[listener->type] = listener->rxQueue;
-//   listeners[listener->type] = *listener;感觉存在些问题
+
+
+
+void timer_handler(int sig, siginfo_t *si, void *uc) {
+    printf("Timer fired!\n");
 }
 
-/* apr_queue是不是线程阻塞，队列为空，线程读他是否会阻塞？队列为空，线程真的阻塞，真阻塞之后，读线程在队列之中被放东西后，是否真的解除阻塞真的读取我们存放的东西 */
+timer_t xTimerCreate(){
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_flags = SA_SIGINFO;
+
+    sa.sa_sigaction = timer_handler;
+    //sa_sigaction字段设置为timer_handler函数的地址。timer_handler是当接收到SIGRTMIN信号时应该被调用的信号处理函数。通过这种方式，你可以自定义信号的处理行为，而不是使用默认的行为（如终止进程）。
+
+    sigaction(SIGRTMIN, &sa, NULL);//将之前设置的信号处理行为应用于SIGRTMIN信号。SIGRTMIN表示实时信号的最小值，它是实时信号范围内的第一个信号。
+
+    struct sigevent se;
+    memset(&se, 0, sizeof(se));
+    se.sigev_notify = SIGEV_SIGNAL;
+    se.sigev_signo = SIGRTMIN;
+    timer_t timer_id;
+    timer_create(CLOCK_REALTIME, &se, &timer_id);
+
+    return timer_id;
+}
+
+long xTimerStart(timer_t timer_id,int expire_time,int repetition){
+    struct itimerspec its;
+    its.it_value.tv_sec = expire_time; // 定时器第一次到期的时间,是按照秒来算
+    its.it_interval.tv_sec = repetition; // 定时器重复触发的间隔时间,时间周期为2s    
+    timer_settime(timer_id, 0, &its, NULL);//设置为0，定时器的到期时间是从现在开始计算的
+    return 0;
+}
+
+//实现创建一个线程，同时在一个进程之中join()等待线程的结束
+long xTaskCreate(void* task_funcion){
+    pthread_t th;
+    pthread_create(&th,NULL,task_funcion,NULL);
+    pthread_join(th,NULL);
+
+}
+
+uint16_t uwbGetAddress()
+{
+  return MY_UWB_ADDRESS;
+}
 
 //实现rangingInit()的功能，
 int main(){
-    // MY_UWB_ADDRESS = uwbGetAddress();
+    MY_UWB_ADDRESS = uwbGetAddress();
     rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
     neighborSetInit(&neighborSet);
-    // neighborSetEvictionTimer = xTimerCreate("neighborSetEvictionTimer",
-    //                                       M2T(NEIGHBOR_SET_HOLD_TIME / 2),
-    //                                       pdTRUE,
-    //                                       (void *) 0,
-    //                                       neighborSetClearExpireTimerCallback);
-    // xTimerStart(neighborSetEvictionTimer, M2T(0));
+    
+    neighborSetEvictionTimer = xTimerCreate();
+    int expiration_time1=5;
+    int repetition1=2;
+    xTimerStart(neighborSetEvictionTimer,expiration_time1,repetition1);
     rangingTableSetInit(&rangingTableSet);
-    // rangingTableSetEvictionTimer = xTimerCreate("rangingTableSetEvictionTimer",
-    //                                           M2T(RANGING_TABLE_HOLD_TIME / 2),
-    //                                           pdTRUE,
-    //                                           (void *) 0,
-    //                                           rangingTableSetClearExpireTimerCallback);
-    // xTimerStart(rangingTableSetEvictionTimer, M2T(0));
+
+    rangingTableSetEvictionTimer = xTimerCreate();
+    int expiration_time2=6;
+    int repetition2=3;
+    xTimerStart(rangingTableSetEvictionTimer,expiration_time2,repetition2);
+
+
+
     TfBufferMutex = xSemaphoreCreateMutex();
 
     listener.type = UWB_RANGING_MESSAGE;
     listener.rxQueue = NULL; // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
-    listener.rxCb = rangingRxCallback;
-    listener.txCb = rangingTxCallback;
+    listener.rxCb = rangingRxCallback;//TODO
+    listener.txCb = rangingTxCallback;//TODO
     uwbRegisterListener(&listener);
 
     idVelocityX = 0;
     idVelocityY = 0;
     idVelocityZ = 0;
 
-
+    //一个swarmRanging进程之中有两个线程，Tx线程和Rx线程
     // xTaskCreate(uwbRangingTxTask, ADHOC_DECK_RANGING_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
     //           ADHOC_DECK_TASK_PRI, &uwbRangingTxTaskHandle);
     // xTaskCreate(uwbRangingRxTask, ADHOC_DECK_RANGING_RX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
@@ -253,11 +241,4 @@ int main(){
 }
 
 
-/*     QueueHandle_t xQueue=xQueueCreate(5,0);
-    BaseType_t xHigherPriorityTaskWokenValue = 1; // 创建并初始化变量
-    BaseType_t * const pxHigherPriorityTaskWoken = &xHigherPriorityTaskWokenValue; // 将变量的地址赋给指针
-    Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
-    xQueueSendFromISR(xQueue,&rxMessageWithTimestamp,pxHigherPriorityTaskWoken);//向队列之中存入一个元素
-    xQueueReceive(xQueue,&rxMessageWithTimestamp,1);
-    xQueueDestroy(pool); */
 

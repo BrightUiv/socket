@@ -7,9 +7,14 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <time.h>
-#include "swarm_ranging.h"
 #include "apr_queue.h"
+#include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
 
+#include "swarm_ranging.h"
+#include "adhocdeck.h"
 /**
  * Type by which queues are referenced.  For example, a call to xQueueCreate()
  * returns an QueueHandle_t variable that can then be used as a parameter to
@@ -35,17 +40,19 @@
 
 
 //---------------------------------------------------------------------------------------------------------
-Ranging_Table_Set_t rangingTableSet;
-static Neighbor_Set_t neighborSet;
-static SemaphoreHandle_t TfBufferMutex;
 // typedef pthread_mutex_t SemaphoreHandle_t;--只能在swarmRanging.h之中进行修改
 static UWB_Message_Listener_t listener;
+static timer_t neighborSetEvictionTimer;
+static uint16_t MY_UWB_ADDRESS;
+static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
 
 
 void rangingRxCallback(void *parameters);
 void rangingTxCallback(void *parameters);
-void neighborSetInit(Neighbor_Set_t *set);
-void neighborBitSetInit(Neighbor_Bit_Set_t *bitSet);
+uint16_t uwbGetAddress();
+timer_t xTimerCreate();
+long xTimerStart(timer_t timer_id,int expire_time,int repetition);
+long xTaskCreate(void* task_funcion);
 //----------------------------------------------------------------------------------------------------------
 
 
@@ -56,7 +63,6 @@ static  apr_queue_t* queues[UWB_MESSAGE_TYPE_COUNT];
 typedef uint16_t logVarId_t;
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 
-static uint16_t MY_UWB_ADDRESS;
 
 typedef uint32_t portTickType;
 

@@ -28,11 +28,14 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+//--------------------------------------------------------------------------------------------------------------------------
+// static TimerHandle_t neighborSetEvictionTimer;修改
+
+//--------------------------------------------------------------------------------------------------------------------------
 static uint16_t MY_UWB_ADDRESS;
 
 static QueueHandle_t rxQueue;
 static Neighbor_Set_t neighborSet;
-static TimerHandle_t neighborSetEvictionTimer;
 Ranging_Table_Set_t rangingTableSet;
 static TimerHandle_t rangingTableSetEvictionTimer;
 static UWB_Message_Listener_t listener;
