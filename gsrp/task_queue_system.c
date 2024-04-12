@@ -3,7 +3,6 @@
 #include<stdio.h>
 
 apr_pool_t *pool;
-static QueueHandle_t rxQueue;
 
 //-----------------------------------------------------------------------------------------------------------------
     
@@ -41,6 +40,11 @@ void uwbRegisterListener(UWB_Message_Listener_t *listener) {
 //   ASSERT(listener->type < UWB_MESSAGE_TYPE_COUNT);
   queues[listener->type] = listener->rxQueue;
 //   listeners[listener->type] = *listener;感觉存在些问题
+}
+
+int uwbSendPacketBlock(UWB_Packet_t *packet)
+{
+  return xQueueSendFromISR(rxQueue, packet, portMAX_DELAY);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------
@@ -217,8 +221,6 @@ int main(){
     int repetition2=3;
     xTimerStart(rangingTableSetEvictionTimer,expiration_time2,repetition2);
 
-
-
     TfBufferMutex = xSemaphoreCreateMutex();
 
     listener.type = UWB_RANGING_MESSAGE;
@@ -235,7 +237,6 @@ int main(){
     xTaskCreate(uwbRangingTxTask);
     xTaskCreate(uwbRangingRxTask);
     
-    printf("hello world\n");
 
     return 0;
 }

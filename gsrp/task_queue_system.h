@@ -13,6 +13,7 @@
 #include <time.h>
 
 #include "swarm_ranging.h"
+
 #include "adhocdeck.h"
 #include <apr_queue.h>
 
@@ -41,21 +42,29 @@
 
 
 //---------------------------------------------------------------------------------------------------------
-// typedef pthread_mutex_t SemaphoreHandle_t;--只能在swarmRanging.h之中进行修改
 static UWB_Message_Listener_t listener;
 static timer_t neighborSetEvictionTimer;
 static uint16_t MY_UWB_ADDRESS;
 static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
+static QueueHandle_t rxQueue;
 
+
+typedef uint32_t     TickType_t;
+typedef pthread_mutex_t SemaphoreHandle_t;
+typedef long   BaseType_t;
 
 void rangingRxCallback(void *parameters);
 void rangingTxCallback(void *parameters);
+
 uint16_t uwbGetAddress();
 timer_t xTimerCreate();
 long xTimerStart(timer_t timer_id,int expire_time,int repetition);
 long xTaskCreate(void* task_funcion);
 // typedef uint16_t logVarId_t;
 // static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
+int uwbSendPacketBlock(UWB_Packet_t *packet);
+
+
 //----------------------------------------------------------------------------------------------------------
 
 
