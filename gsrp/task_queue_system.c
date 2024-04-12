@@ -70,7 +70,7 @@ TickType_t xTaskGetTickCount(){
     Queue队列为一个指针队列，里面存放的都是指针类型的数据
 */
 QueueHandle_t xQueueCreate( const uint32_t uxQueueLength,
-                                      const uint32_t uxItemSize){//uxItemSize每个数据类型的长度
+                            const uint32_t uxItemSize){//uxItemSize每个数据类型的长度
     apr_queue_t *queue;
 
     // 初始化 APR 库
@@ -232,10 +232,10 @@ int main(){
     idVelocityZ = 0;
 
     //一个swarmRanging进程之中有两个线程，Tx线程和Rx线程
-    // xTaskCreate(uwbRangingTxTask, ADHOC_DECK_RANGING_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
-    //           ADHOC_DECK_TASK_PRI, &uwbRangingTxTaskHandle);
-    // xTaskCreate(uwbRangingRxTask, ADHOC_DECK_RANGING_RX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
-    //           ADHOC_DECK_TASK_PRI, &uwbRangingRxTaskHandle);
+    xTaskCreate(uwbRangingTxTask);
+    xTaskCreate(uwbRangingRxTask);
+    
+    printf("hello world\n");
 
     return 0;
 }

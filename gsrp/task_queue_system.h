@@ -7,7 +7,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <time.h>
-#include "apr_queue.h"
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +14,8 @@
 
 #include "swarm_ranging.h"
 #include "adhocdeck.h"
+#include <apr_queue.h>
+
 /**
  * Type by which queues are referenced.  For example, a call to xQueueCreate()
  * returns an QueueHandle_t variable that can then be used as a parameter to
@@ -53,16 +54,13 @@ uint16_t uwbGetAddress();
 timer_t xTimerCreate();
 long xTimerStart(timer_t timer_id,int expire_time,int repetition);
 long xTaskCreate(void* task_funcion);
+// typedef uint16_t logVarId_t;
+// static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 //----------------------------------------------------------------------------------------------------------
 
 
 typedef apr_queue_t* QueueHandle_t;
 static  apr_queue_t* queues[UWB_MESSAGE_TYPE_COUNT];
-
-
-typedef uint16_t logVarId_t;
-static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
-
 
 typedef uint32_t portTickType;
 
@@ -93,11 +91,10 @@ static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
 struct tskTaskControlBlock;     /* The old naming convention is used to prevent breaking kernel aware debuggers. */
 // typedef struct tskTaskControlBlock * TaskHandle_t;
 
-typedef short BaseType_t;
 
 //实现--自己修改
 // typedef uint32_t TickType_t;
-typedef long TickType_t;
+// typedef long TickType_t;
 
 // BaseType_t xQueueSemaphoreTake( QueueHandle_t xQueue, TickType_t xTicksToWait );
 // #define xSemaphoreTake( xSemaphore, xBlockTime )    xQueueSemaphoreTake( ( xSemaphore ), ( xBlockTime ) )
@@ -141,5 +138,7 @@ BaseType_t xQueueSendFromISR(  QueueHandle_t xQueue,
 
 //有些需要修改
 void uwbRegisterListener(UWB_Message_Listener_t *listener) ;
+
+
 
 #endif

@@ -1,8 +1,6 @@
-#include <math.h>
 #include <string.h>
 
-#include "task_queue_system.h"
-
+#include "task_queue_system.h"//需要重新调用修改的函数
 /*
 #include "FreeRTOS.h"
 #include "system.h"
@@ -30,20 +28,23 @@
 
 //--------------------------------------------------------------------------------------------------------------------------
 // static TimerHandle_t neighborSetEvictionTimer;修改
-
+ Neighbor_Set_t neighborSet;
+ TimerHandle_t rangingTableSetEvictionTimer;
+ SemaphoreHandle_t TfBufferMutex;
+// static TaskHandle_t uwbRangingTxTaskHandle = 0;
+// static TaskHandle_t uwbRangingRxTaskHandle = 0;
 //--------------------------------------------------------------------------------------------------------------------------
 static uint16_t MY_UWB_ADDRESS;
 
 static QueueHandle_t rxQueue;
-static Neighbor_Set_t neighborSet;
+ Neighbor_Set_t neighborSet;
+// static Neighbor_Set_t neighborSet;
 Ranging_Table_Set_t rangingTableSet;
-static TimerHandle_t rangingTableSetEvictionTimer;
+// static TimerHandle_t rangingTableSetEvictionTimer;
 static UWB_Message_Listener_t listener;
-static TaskHandle_t uwbRangingTxTaskHandle = 0;
-static TaskHandle_t uwbRangingRxTaskHandle = 0;
 static int TfBufferIndex = 0;
 static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
-static SemaphoreHandle_t TfBufferMutex;
+// static SemaphoreHandle_t TfBufferMutex;
 static int rangingSeqNumber = 1;
 static uint32_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
@@ -1274,33 +1275,33 @@ static void uwbRangingRxTask(void *parameters) {
   }
 }
 
-void rangingRxCallback(void *parameters) {
-  // DEBUG_PRINT("rangingRxCallback \n");
+// void rangingRxCallback(void *parameters) {
+//   // DEBUG_PRINT("rangingRxCallback \n");
 
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
+//   UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
 
-  dwTime_t rxTime;
-  dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
-  Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
-  rxMessageWithTimestamp.rxTime = rxTime;
-  Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
-  rxMessageWithTimestamp.rangingMessage = *rangingMessage;
+//   dwTime_t rxTime;
+//   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
+//   Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
+//   rxMessageWithTimestamp.rxTime = rxTime;
+//   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
+//   rxMessageWithTimestamp.rangingMessage = *rangingMessage;
 
-  xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
-}
+//   xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
+// }
 
-void rangingTxCallback(void *parameters) {
-  UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
-  Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
+// void rangingTxCallback(void *parameters) {
+//   UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
+//   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
 
-  dwTime_t txTime;
-  dwt_readtxtimestamp((uint8_t *) &txTime.raw);
+//   dwTime_t txTime;
+//   dwt_readtxtimestamp((uint8_t *) &txTime.raw);
 
-  Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
-  updateTfBuffer(timestamp);
-}
+//   Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
+//   updateTfBuffer(timestamp);
+// }
 
 
 //

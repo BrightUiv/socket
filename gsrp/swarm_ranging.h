@@ -9,7 +9,18 @@
 #include <pthread.h>
 #include "dwTypes.h"
 #include "adhocdeck.h"
+//---------------------------------------------------------------------------------------------------------------------------
+#include <stdlib.h>
+#include<stdio.h>
+#include <stdbool.h>  
+#include <math.h>
+
+//---------------------------------------------------------------------------------------------------------------------------
+
 //#define RANGING_DEBUG_ENABLE
+
+
+
 
 /* Function Switch */
 //#define ENABLE_BUS_BOARDING_SCHEME
@@ -43,9 +54,17 @@
 
 typedef short set_index_t;
 
-//----------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------
+typedef uint32_t Time_t;//自己添加，无法通过引入头文件来实现，FreeRTOS.h头文件不应该被引入
 typedef pthread_mutex_t SemaphoreHandle_t;
-//----------------------------------------------------------------------
+typedef timer_t TimerHandle_t;
+#define pdFALSE    0 
+#define M2T(X) ((unsigned int)(X))
+typedef uint32_t     TickType_t;
+#define portMAX_DELAY              ( TickType_t ) 0xffffffffUL
+typedef long   BaseType_t;
+
+//--------------------------------------------------------------------------------------------------------------------------
 
 
 /* Timestamp Tuple */
@@ -123,8 +142,6 @@ typedef enum {
   +------+------+------+------+------+
 */
 
-//自己添加，无法通过引入头文件来实现，FreeRTOS.h头文件不应该被引入
-typedef uint32_t Time_t;
 
 typedef struct {
   uint16_t neighborAddress;
@@ -244,5 +261,13 @@ void printRangingTableSet(Ranging_Table_Set_t *set);
 void printRangingMessage(Ranging_Message_t *rangingMessage);
 void printNeighborBitSet(Neighbor_Bit_Set_t *bitSet);
 void printNeighborSet(Neighbor_Set_t *set);
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+extern Ranging_Table_Set_t rangingTableSet;
+extern SemaphoreHandle_t TfBufferMutex;
+extern Neighbor_Set_t neighborSet;
+extern TimerHandle_t rangingTableSetEvictionTimer;
+//----------------------------------------------------------------------------------------------------------------------------
 
 #endif
