@@ -1471,71 +1471,35 @@ static void uwbRangingRxTask(void *parameters)
     vTaskDelay(M2T(1));
   }
 }
-
-// 实现rangingInit()的功能，
-int main()
+void rangingRxCallback(void *parameters)
 {
-  MY_UWB_ADDRESS = uwbGetAddress();
-  rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
-  neighborSetInit(&neighborSet);
+  // DEBUG_PRINT("rangingRxCallback \n");
 
-  neighborSetEvictionTimer = xTimerCreate();
-  int expiration_time1 = 5;
-  int repetition1 = 2;
-  xTimerStart(neighborSetEvictionTimer, expiration_time1, repetition1);
-  rangingTableSetInit(&rangingTableSet);
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  rangingTableSetEvictionTimer = xTimerCreate();
-  int expiration_time2 = 6;
-  int repetition2 = 3;
-  xTimerStart(rangingTableSetEvictionTimer, expiration_time2, repetition2);
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
 
-  TfBufferMutex = xSemaphoreCreateMutex();
+  dwTime_t rxTime;
+  //   dwt_readrxtimestamp((uint8_t *)&rxTime.raw); todo
+  Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
+  //   rxMessageWithTimestamp.rxTime = rxTime; //todo
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
+  rxMessageWithTimestamp.rangingMessage = *rangingMessage;
 
-  listener.type = UWB_RANGING_MESSAGE;
-  listener.rxQueue = NULL;           // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
-  listener.rxCb = rangingRxCallback; // TODO
-  listener.txCb = rangingTxCallback; // TODO
-  uwbRegisterListener(&listener);
-
-  idVelocityX = 0;
-  idVelocityY = 0;
-  idVelocityZ = 0;
-
-  // 一个swarmRanging进程之中有两个线程，Tx线程和Rx线程
-  xTaskCreate(uwbRangingTxTask);
-  xTaskCreate(uwbRangingRxTask);
-
-  return 0;
+  xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
 }
 
-// void rangingRxCallback(void *parameters) {
-//   // DEBUG_PRINT("rangingRxCallback \n");
+void rangingTxCallback(void *parameters)
+{
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
 
-//   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  dwTime_t txTime;
+  //   dwt_readtxtimestamp((uint8_t *)&txTime.raw);//todo
 
-//   UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
-
-//   dwTime_t rxTime;
-//   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
-//   Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
-//   rxMessageWithTimestamp.rxTime = rxTime;
-//   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
-//   rxMessageWithTimestamp.rangingMessage = *rangingMessage;
-
-//   xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
-// }
-
-// void rangingTxCallback(void *parameters) {
-//   UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
-//   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
-
-//   dwTime_t txTime;
-//   dwt_readtxtimestamp((uint8_t *) &txTime.raw);
-
-//   Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
-//   updateTfBuffer(timestamp);
-// }
+  Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
+  updateTfBuffer(timestamp);
+}
 
 void rangingInit()
 {
