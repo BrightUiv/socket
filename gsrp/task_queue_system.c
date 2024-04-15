@@ -6,13 +6,6 @@ apr_pool_t *pool;
 
 //-----------------------------------------------------------------------------------------------------------------
 
-int uwbSendPacketBlock(UWB_Packet_t *packet)
-{
-  return xQueueSendFromISR(rxQueue, packet, portMAX_DELAY);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------
-
 // 休眠对应的秒数
 void vTaskDelay(const TickType_t xTicksToDelay)
 {
@@ -68,6 +61,15 @@ void xQueueDestroy(apr_pool_t *pool)
 
 // 实现往apr_queue_t队列之中插入一个指针--实现
 BaseType_t xQueueSendFromISR(
+    QueueHandle_t xQueue,
+    const void *const pvItemToQueue, // 存放的是一级指针
+    BaseType_t *const pxHigherPriorityTaskWoken)
+{
+  return xQueueSend(xQueue, pvItemToQueue, pxHigherPriorityTaskWoken);
+}
+
+// 实现往apr_queue_t队列之中插入一个指针--实现
+BaseType_t xQueueSend(
     QueueHandle_t xQueue,
     const void *const pvItemToQueue, // 存放的是一级指针
     BaseType_t *const pxHigherPriorityTaskWoken)
