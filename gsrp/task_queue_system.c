@@ -204,42 +204,5 @@ uint16_t uwbGetAddress()
   return MY_UWB_ADDRESS;
 }
 
-//实现rangingInit()的功能，
-int main(){
-    MY_UWB_ADDRESS = uwbGetAddress();
-    rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
-    neighborSetInit(&neighborSet);
-    
-    neighborSetEvictionTimer = xTimerCreate();
-    int expiration_time1=5;
-    int repetition1=2;
-    xTimerStart(neighborSetEvictionTimer,expiration_time1,repetition1);
-    rangingTableSetInit(&rangingTableSet);
-
-    rangingTableSetEvictionTimer = xTimerCreate();
-    int expiration_time2=6;
-    int repetition2=3;
-    xTimerStart(rangingTableSetEvictionTimer,expiration_time2,repetition2);
-
-    TfBufferMutex = xSemaphoreCreateMutex();
-
-    listener.type = UWB_RANGING_MESSAGE;
-    listener.rxQueue = NULL; // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
-    listener.rxCb = rangingRxCallback;//TODO
-    listener.txCb = rangingTxCallback;//TODO
-    uwbRegisterListener(&listener);
-
-    idVelocityX = 0;
-    idVelocityY = 0;
-    idVelocityZ = 0;
-
-    //一个swarmRanging进程之中有两个线程，Tx线程和Rx线程
-    xTaskCreate(uwbRangingTxTask);
-    xTaskCreate(uwbRangingRxTask);
-    
-
-    return 0;
-}
-
 
 
