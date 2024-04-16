@@ -5,17 +5,15 @@
 #include "dwTypes.h"
 #include "libdw3000.h"
 #include "swarm_ranging.h"
+#include "task_queue_system.h"
 
 #define DEFAULT_RX_TIMEOUT 0xFFFFF
 
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit = false;
-static TaskHandle_t uwbTaskHandle = 0;
-static TaskHandle_t uwbTxTaskHandle = 0;
 static SemaphoreHandle_t irqSemaphore;
 
 static QueueHandle_t txQueue;
-static xQueueHandle queues[UWB_MESSAGE_TYPE_COUNT];
 static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
 
 /* rx buffer used in rx_callback */
@@ -48,21 +46,24 @@ int uwbReceivePacket(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet)
 {
 	ASSERT(packet);
 	ASSERT(type < UWB_MESSAGE_TYPE_COUNT);
-	return xQueueReceive(queues[type], packet, 0);
+	// return xQueueReceive(queues[type], packet, 0);
+	return 0;
 }
 
 int uwbReceivePacketBlock(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet)
 {
 	ASSERT(packet);
 	ASSERT(type < UWB_MESSAGE_TYPE_COUNT);
-	return xQueueReceive(queues[type], packet, portMAX_DELAY);
+	// return xQueueReceive(queues[type], packet, portMAX_DELAY);
+	return 0;
 }
 
 int uwbReceivePacketWait(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet, int wait)
 {
 	ASSERT(packet);
 	ASSERT(type < UWB_MESSAGE_TYPE_COUNT);
-	return xQueueReceive(queues[type], packet, M2T(wait));
+	// return xQueueReceive(queues[type], packet, M2T(wait));
+	return 0;
 }
 
 void uwbRegisterListener(UWB_Message_Listener_t *listener)
