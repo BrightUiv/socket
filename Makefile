@@ -54,4 +54,4 @@ kill:
 	pkill -f ./$(TARGET_SERVER)
 
 apr_test:
-	$(CC) $(CFLAGS)  -o apr_test apr_queue/apr_test.c -I/usr/include/apr-1.0 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1 -lpthread
+	$(CC) $(CFLAGS)  -o apr_test apr_queue/apr_test.c -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1 -lpthread
