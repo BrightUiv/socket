@@ -1,14 +1,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "queue.h"
-#include "semphr.h"
-#include "task.h"
-
 #include "adhocdeck.h"
 #include "dwTypes.h"
 #include "libdw3000.h"
-#include "dw3000.h"
 #include "swarm_ranging.h"
 
 #define DEFAULT_RX_TIMEOUT 0xFFFFF
