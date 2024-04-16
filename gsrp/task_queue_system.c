@@ -126,39 +126,34 @@ void xSemaphoreDestroyMutex(SemaphoreHandle_t mutex)
   pthread_mutex_destroy(&mutex);
 }
 
-void timer_handler(int sig, siginfo_t *si, void *uc)
+void alarm_handler(int sig)
 {
-  printf("Timer fired!\n");
+    printf("Timer expired可以替换\n");
 }
 
-timer_t xTimerCreate()
+struct itimerval xTimerCreate()
 {
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(sa));
-  sa.sa_flags = SA_SIGINFO;
-
-  sa.sa_sigaction = timer_handler;
-  // sa_sigaction字段设置为timer_handler函数的地址。timer_handler是当接收到SIGRTMIN信号时应该被调用的信号处理函数。通过这种方式，你可以自定义信号的处理行为，而不是使用默认的行为（如终止进程）。
-
-  sigaction(SIGRTMIN, &sa, NULL); // 将之前设置的信号处理行为应用于SIGRTMIN信号。SIGRTMIN表示实时信号的最小值，它是实时信号范围内的第一个信号。
-
-  struct sigevent se;
-  memset(&se, 0, sizeof(se));
-  se.sigev_notify = SIGEV_SIGNAL;
-  se.sigev_signo = SIGRTMIN;
-  timer_t timer_id;
-  timer_create(CLOCK_REALTIME, &se, &timer_id);
-
-  return timer_id;
+    struct itimerval timer;
+    return timer;
 }
 
-long xTimerStart(timer_t timer_id, int expire_time, int repetition)
+int xTimerStart(struct itimerval timer, int expire_time, int repetition, void *func)
 {
-  struct itimerspec its;
-  its.it_value.tv_sec = expire_time;      // 定时器第一次到期的时间,是按照秒来算
-  its.it_interval.tv_sec = repetition;    // 定时器重复触发的间隔时间,时间周期为2s
-  timer_settime(timer_id, 0, &its, NULL); // 设置为0，定时器的到期时间是从现在开始计算的
-  return 0;
+    // struct itimerval timer=xTimerCreate();
+    struct sigaction sa;
+
+    // 清空并设置信号处理函数
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = func;
+    sigaction(SIGALRM, &sa, NULL);
+
+    // 设置定时器的时间间隔
+    timer.it_value.tv_sec = expire_time; // 定时器首次超时时间
+    timer.it_value.tv_usec = 0;
+    timer.it_interval.tv_sec = repetition; // 定时器周期性超时时间，设置为0表示单次定时器
+    timer.it_interval.tv_usec = 0;
+
+    return setitimer(ITIMER_REAL, &timer, NULL);
 }
 
 // 实现创建一个线程，同时在一个进程之中join()等待线程的结束
