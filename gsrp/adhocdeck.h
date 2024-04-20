@@ -1,7 +1,7 @@
 #ifndef __ADHOCDECK_H__
 #define __ADHOCDECK_H__
 
-#include "libdw3000.h"
+#include "libdw3000.h"//修改过
 #include "mac_802_15_4.h"
 /*
 #include "queue.h"
@@ -91,7 +91,7 @@ typedef enum {
   UWB_OLSR_MESSAGE = 4,
   UWB_MESSAGE_TYPE_COUNT, /* only used for counting message types. */
 } UWB_MESSAGE_TYPE;
-
+// UWB_Packet_t
 typedef struct {
   UWB_Address_t srcAddress; // mac address, currently using MY_UWB_ADDRESS
   UWB_Address_t destAddress; // mac address
