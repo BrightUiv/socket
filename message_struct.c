@@ -2,9 +2,12 @@
 
 int sendSocketPacket(int sockfd, Socket_Packet_t *packet)
 {
-    int result = socket_send_payload(sockfd, packet,
-                                     packet->header.packetLength);
-    return result;
+    if (send(sockfd, packet, packet->header.packetLength, 0) == -1)
+    {
+        perror("Failed to send Socket_Packet_t *packet");
+        return -1;
+    }
+    return 0;
 }
 
 int recvSocketPacket(int sockfd, Socket_Packet_t **packet)

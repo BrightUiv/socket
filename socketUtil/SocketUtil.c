@@ -95,7 +95,7 @@ int socket_receive_payload(int sockfd, void **packet, size_t *dataLength)
     }
     else if (n == 0)
     {
-        printf("recv end");
+        printf("recv end\n");
         return -1;
     }
 

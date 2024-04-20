@@ -14,6 +14,7 @@
 
 volatile sig_atomic_t stop; // process ctrl+c
 int listenfd = -1;
+int portnum = -1;
 
 #define TIMEOUT -1 // Poll wait forever
 #define MAX_CLIENTS 20
@@ -129,7 +130,7 @@ void handle_client_data(int idx)
 	if (result >= 0 && packet != NULL)
 	{
 		// 成功接收到消息，打印消息内容
-		printf("from %d Received message: %s\n", connfd, packet->payload);
+		printf("ID %d received message.\n", portnum);
 
 		// back message
 		const char *responseMessage = "Message received successfully";
@@ -214,7 +215,7 @@ int main(int argc, char *argv[])
 		printf("Error: port num range.\n");
 		return 1;
 	}
-	int portnum = arg;
+	portnum = arg;
 
 	// Everything went well, print it as a regular number plus a newline
 	printf("The proc name: %s\nThe port num: %d\n", procname, portnum);
