@@ -8,15 +8,17 @@
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <assert.h>
 #include "socketUtil/SocketUtil.h"
 #include "message_struct.h"
+#define SERVER_IP_ADDR "127.0.0.1"
 #define SERVER_PORT_START 50627
 
-static Connection connect_list[PROC_NUM + 1];
+static Connection connect_list[PROC_NUM];
 
-Connection connectToServer(char *ip_addr, int port)
+Connection connectToServer(int port)
 {
-	Connection conn = connect_to_server(ip_addr, port);
+	Connection conn = connect_to_server(SERVER_IP_ADDR, port);
 	if (conn.sockfd < 0)
 	{
 		printf("\n Error: Could not create or connect socket to port %d\n", port);
@@ -28,22 +30,32 @@ Connection connectToServer(char *ip_addr, int port)
 	return conn;
 }
 
-void connectAllServer(char *ip_addr)
+void connectAllServer()
 {
 	for (int i = 0; i < PROC_NUM; i++)
 	{
-		connect_list[i] = connectToServer(ip_addr, SERVER_PORT_START + i);
+		connect_list[i] = connectToServer(SERVER_PORT_START + i);
 	}
 }
 
-int sendToServer(int sockfd, const char *message)
+void disconnectAllServer()
+{
+	for (int i = 0; i < PROC_NUM; i++)
+	{
+		close(connect_list[i].sockfd);
+		connect_list[i].sockfd = -1; // 标记为已关闭
+	}
+}
+
+int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *payload)
 {
 	Socket_Packet_t packet;
 	memset(&packet, 0, sizeof(packet));
-	packet.header.packetLength = sizeof(Socket_Packet_Header_t) + strlen(message);
-	strncpy(packet.payload, message, sizeof(packet.payload) - 1);
+	packet.header.packetLength = sizeof(Socket_Packet_Header_t) + payloadLength;
+	packet.header.type = rtxType; // todo use typedef enum to define meaningful type
+	strncpy(packet.payload, payload, payloadLength);
 
-	return sendSocketPacket(sockfd, &packet);
+	return sendSocketPacket(connect_list[partyID].sockfd, &packet);
 }
 
 int recvFromServer(int sockfd)
@@ -64,53 +76,53 @@ int recvFromServer(int sockfd)
 	}
 }
 
-void communicateWithAllServers(char *ip_addr, const char *message)
+int main(int argc, char *argv[])
 {
-	for (int i = 0; i < PROC_NUM; i++)
-	{
-		connect_list[i] = connectToServer(ip_addr, 50627 + i);
-		if (connect_list[i].sockfd < 0)
-		{
-			printf("\n Error: Could not create or connect to server %d \n", i);
-			continue;
-		}
-		printf("Connected to server %d\n", i);
+	FILE *fp;
+	printf("We have a totall of %d CF Proc.\n", PROC_NUM);
 
+	fp = fopen("simulate_active.conf", "r");
+	int party_id;
+	char rxtx_type[8];
+	long long timestamp;
+
+	connectAllServer();
+
+	while (1)
+	{
+		if (fscanf(fp, "%d\t%s\t%llx", &party_id, rxtx_type, &timestamp) == EOF)
+			break;
+		assert(party_id >= 0);
+		assert(party_id < PROC_NUM);
+		assert(rxtx_type[0] == 'R' || rxtx_type[0] == 'T');
+		assert(rxtx_type[1] == 'X');
+		assert(rxtx_type[2] == 0);
+		assert(timestamp <= 0xffffffffff);
+		printf("--------\n");
+		printf("%d\t%s\t%llx\n", party_id, rxtx_type, timestamp);
 		// 向服务器发送消息
-		if (sendToServer(connect_list[i].sockfd, message) == 0)
+		if (sendToServer(party_id, rxtx_type[0], sizeof(timestamp), (char *)&timestamp) == 0)
 		{
-			printf("Message sent to server %d\n", i);
+			printf("Message sent to server %d\n", party_id);
 		}
 		else
 		{
-			printf("Failed to send message to server %d\n", i);
+			printf("Failed to send message to server %d\n", party_id);
 		}
 
 		// 尝试从服务器接收消息
-		if (recvFromServer(connect_list[i].sockfd) == 0)
+		if (recvFromServer(connect_list[party_id].sockfd) == 0)
 		{
-			printf("Message received from server %d\n", i);
+			printf("Message received from server %d\n", party_id);
 		}
 		else
 		{
-			printf("Failed to receive message from server %d\n", i);
+			printf("Failed to receive message from server %d\n", party_id);
 		}
-
-		// 确保连接被关闭
-		close(connect_list[i].sockfd);
-		connect_list[i].sockfd = -1; // 标记为已关闭
 	}
-}
 
-int main(int argc, char *argv[])
-{
-	printf("We have a totall of %d CF Proc.\n", PROC_NUM);
-	if (argc != 2)
-	{
-		printf("\n Usage: %s <ip of server> \n", argv[0]);
-		return 1;
-	}
-	char message[10] = "hello";
-	communicateWithAllServers(argv[1], message);
+	fclose(fp);
+	disconnectAllServer();
+
 	return 0;
 }
