@@ -6,26 +6,11 @@ int getIntByIndex(char buffer[], int count_num, const char *delimiter);
 int findStartIndex(FILE *fp, int set[], int number);
 bool checkIsReceived(char *buffer, int count_fly, int src_addr, int msg_seq);
 void getLossFlies(FILE *fp, char line[], char *out_str, int count_fly);
+int getCountPart(char line[], const char *delimiter);
+int getCountBodyUnit(char line[], const char *delimiter);
+bool getOneRecvInfo(char *buffer, char *out_str, int count_fly, int src_addr, int msg_seq);
+void getRecvFlies(FILE *fp, char line[], char *out_str, int count_fly);
 char buffer[1024]; // 用于存储文件中的一行
-
-// typedef enum
-// {
-//     TYPE_INT,
-//     TYPE_FLOAT,
-//     TYPE_STRING,
-//     TYPE_ERROR
-// } DataType;
-
-// typedef struct
-// {
-//     DataType type;
-//     union
-//     {
-//         int intValue;
-//         float floatValue;
-//         char *stringValue;
-//     } data;
-// } DataItem;
 
 int main()
 {
@@ -79,7 +64,8 @@ int main()
         count_line++;
         if (count_line >= 12)
         {
-            getLossFlies(fp, buffer, out_str, 3);
+            // getLossFlies(fp, buffer, out_str, 3);
+            getRecvFlies(fp, buffer, out_str, count_fly);
             printf("count_line : %d  out_str: %s \n", count_line, out_str);
         }
     }
@@ -112,9 +98,35 @@ int getIntByIndex(char buffer[], int count_num, const char *delimiter)
         }
         token = strtok(NULL, delimiter); // 继续分割剩余的字符串
     }
-    // printf("Location %d  return   %s\n", count_num, token);
 
     return atoi(token);
+}
+
+/**
+ * 功能：返回对应位置的double类型数据
+ */
+double getDoubleByIndex(char buffer[], int count_num, const char *delimiter)
+{
+    char buffer_copy[1024];
+    // 复制字符串到新的内存位置
+    strcpy(buffer_copy, buffer);
+
+    char *token;   // 分隔符之间的字符
+    int count = 0; // 重置计数器
+
+    // 使用strtok分割字符串
+    token = strtok(buffer_copy, delimiter);
+    while (token != NULL)
+    {
+        count++;
+        if (count == count_num)
+        {
+            break;
+        }
+        token = strtok(NULL, delimiter); // 继续分割剩余的字符串
+    }
+
+    return strtod(token, NULL);
 }
 
 /**
@@ -178,24 +190,20 @@ int findStartIndex(FILE *fp, int set[], int number)
 // 为control_center进程生成配置文件
 // 功能:生成对应的配置文件
 // 要点：1.找到一条测距消息的未收到的无人机srcAddress,并且使用一个数组记录下编号
-// 2.
 FILE *generateConfig(FILE *fp)
 {
     while (1)
     {
-        // fgets()传输读取当前文件的指针位置,
+        // 生成一个.conf文件
     }
     return NULL;
 }
+
 /**
- * 功能：返回某条测距消息未收到无人机的编号
- * 返回方式：一个int fly[]集合，初始值都设置为-1，不为0的时候为无人机的编号
- *count_fly:总的无人机测距数量，知道文件读取到哪一行了
- *line[]表是当前所读取的测距消息
- * out_str表示返回的未收到此消息无人机的编号,通过逗号分隔
+ *功能：获得所有收到这条消息无人机的srcAddr，timestamp
  *
- **/
-void getLossFlies(FILE *fp, char line[], char *out_str, int count_fly)
+ * */
+void getRecvFlies(FILE *fp, char line[], char *out_str, int count_fly)
 {
     if (fp == NULL)
     {
@@ -204,6 +212,54 @@ void getLossFlies(FILE *fp, char line[], char *out_str, int count_fly)
     }
 
     out_str[0] = '\0'; // 初始化输出字符串
+
+    long initial_pos = ftell(fp); // 获取文件的当前位置
+    /* TODO:定位msg_seq的时候 */
+    int msg_seq = getIntByIndex(line, 8, ",");
+    int src_addr = getIntByIndex(line, 7, ",");
+
+    if (initial_pos == -1)
+    {
+        perror("Failed to get the file position");
+        return;
+    }
+
+    // 开辟一块缓冲区,用于读取文件内容一行
+    char buffer[1024];
+
+    // 连续读取count_fly-1行的测距消息
+    for (int i = 1; i <= count_fly - 1; i++)
+    {
+        char temp[50]; // 临时存储每个整数的字符串表示
+        if (fgets(buffer, sizeof(buffer), fp) == NULL)
+        {
+            printf("Failed to read line or end of file reached.\n");
+            break;
+        }
+
+        getOneRecvInfo(buffer, out_str, count_fly, src_addr, msg_seq);
+    }
+
+    fseek(fp, initial_pos, SEEK_SET);
+}
+
+/**
+ *  功能：返回某条测距消息未收到无人机的编号
+ *  count_fly:总的无人机测距数量，知道文件读取到哪一行了
+ *  line[]表是当前所读取的测距消息
+ *  out_str表示返回的未收到此消息无人机的编号,通过逗号分隔
+ *
+ **/
+// 需要修改：因为涉及到pkl文件之中的顺序
+void getLossFlies(FILE *fp, char line[], char *out_str, int count_fly)
+{
+    if (fp == NULL)
+    {
+        printf("File pointer is null.\n");
+        return;
+    }
+
+    out_str[0] = '\0'; // 初始化输出字符串,考虑到strcat()函数
     // 获取文件的当前位置
     long initial_pos = ftell(fp);
     /* TODO:定位msg_seq的时候 */
@@ -220,7 +276,6 @@ void getLossFlies(FILE *fp, char line[], char *out_str, int count_fly)
     char buffer[1024];
 
     // 连续读取count_fly-1行的测距消息
-    // printf("++++++++++++++++++++++++++\n");
     for (int i = 1; i <= count_fly - 1; i++)
     {
         char temp[50]; // 临时存储每个整数的字符串表示
@@ -234,7 +289,6 @@ void getLossFlies(FILE *fp, char line[], char *out_str, int count_fly)
         {
             // 记录下这行buffer无人机的编号
             int loss_scr_addr = getIntByIndex(buffer, 7, ",");
-            // printf("loss_scr_addr is: %d\n", loss_scr_addr);
             // 将整数格式化为字符串并添加到 outStr
             sprintf(temp, "%d", loss_scr_addr);
             strcat(out_str, ",");
@@ -245,7 +299,7 @@ void getLossFlies(FILE *fp, char line[], char *out_str, int count_fly)
 }
 
 /**
- * 说明：一条buffer就是一条无人机发送的测距消息
+ * 功能：判断当前的测距消息是否被其余无人机收到
  */
 bool checkIsReceived(char *buffer, int count_fly, int src_addr, int msg_seq)
 {
@@ -265,7 +319,67 @@ bool checkIsReceived(char *buffer, int count_fly, int src_addr, int msg_seq)
 
     return false;
 }
+/**
+ * 返回值：一条接收消息无人机的srcAddr,timestamp
+ */
+bool getOneRecvInfo(char *buffer, char *out_str, int count_fly, int src_addr, int msg_seq)
+{
+    int pos_addr = 1;
+    for (int i = 0; i < count_fly - 1; i++)
+    {
+        int address = getIntByIndex(buffer, pos_addr, ",");
+        int seq_number = getIntByIndex(buffer, pos_addr + 1, ",");
+        double rx_timestamp = getDoubleByIndex(buffer, pos_addr + 2, ",");
+        char temp[50];
 
-// 存在问题，如果一个message之中，只有一个body如何解决
-// 首先计算出一共有多少个body,总的逗号分隔数，减去header的字段数，除以3，计算出body_unit的总数
-// 出现不匹配问题，往下扫描后，没有及时返回
+        int my_address = getIntByIndex(buffer, 7, ",");
+        if (address == src_addr && seq_number == msg_seq)
+        {
+
+            sprintf(temp, "%d", address);
+            strcat(out_str, ",");
+            strcat(out_str, temp); // strcat必须要以'\0' 空终止字符结尾
+
+            sprintf(temp, "%f", rx_timestamp); // sprintf() 自动在输出的字符串末尾添加 \0
+            strcat(out_str, ",");
+            strcat(out_str, temp);
+
+            return true; // 表示这架无人机收到上一次的群发消息
+        }
+
+        pos_addr = pos_addr + 3;
+    }
+
+    return false;
+}
+
+int getCountBodyUnit(char line[], const char *delimiter)
+{
+    // 1.首先计算出使用逗号分隔的部分数量
+    int count_part = getCountPart(line, delimiter);
+    // 2.出去body_unit部分还剩8项
+    int count_body_units = count_part - 8;
+    // 3.每个body_unit由三项组成
+    int count_body_unit = (count_part - count_body_units) / 3;
+    return count_body_unit;
+}
+
+int getCountPart(char line[], const char *delimiter)
+{
+    int total_count = 0;
+
+    char buffer_copy[1024];
+    // 复制字符串到新的内存位置
+    strcpy(buffer_copy, line);
+
+    char *token; // 分隔符之间的字符
+
+    // 使用strtok分割字符串
+    token = strtok(buffer_copy, delimiter);
+    while (token != NULL)
+    {
+        total_count++;
+        token = strtok(NULL, delimiter); // 继续分割剩余的字符串
+    }
+    return total_count;
+}

@@ -16,17 +16,18 @@ volatile sig_atomic_t stop; // process ctrl+c
 int listenfd = -1;
 int portnum = -1;
 
-#define TIMEOUT -1 // Poll wait forever
-#define MAX_CLIENTS 20
+#define TIMEOUT -1	   // Poll wait forever
+#define MAX_CLIENTS 20 // 客户端：swarm_ranging进程最大数量
 
 typedef struct
 {
-	struct pollfd fds[MAX_CLIENTS + 1];
+	struct pollfd fds[MAX_CLIENTS + 1]; // 存储网络连接的状态信息
 	int count;
 } ClientManager;
 
 ClientManager manager;
 
+// 初始化ClientManager
 void initClientManager(ClientManager *manager)
 {
 	manager->count = 0;
@@ -38,6 +39,7 @@ void initClientManager(ClientManager *manager)
 	}
 }
 
+// 接受来自客户端的连接
 void accept_new_connection()
 {
 	struct sockaddr_in client_addr;
@@ -79,6 +81,7 @@ void setup_signal_handler()
 	signal(SIGINT, handle_sigint);
 }
 
+// 关闭连接
 void close_and_clear_client(int idx)
 {
 	if (manager.fds[idx].fd >= 0)
@@ -88,9 +91,11 @@ void close_and_clear_client(int idx)
 	}
 }
 
-int init_server_socket(int port)
+// 初始化
+int init_server_socket(int port) // port为绑定的端口号
 {
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
+	// 准备一个套接字，用于TCP网络通信，支持 IPv4 地址
 	if (listenfd < 0)
 	{
 		perror("socket creation failed");
@@ -103,6 +108,7 @@ int init_server_socket(int port)
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serv_addr.sin_port = htons(port);
 
+	// 绑定套接字到端口port
 	if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
 	{
 		perror("bind failed");
@@ -110,36 +116,39 @@ int init_server_socket(int port)
 		exit(EXIT_FAILURE);
 	}
 
+	// 监听套接字
 	if (listen(listenfd, MAX_CLIENTS) < 0)
 	{
 		perror("listen failed");
 		close(listenfd);
 		exit(EXIT_FAILURE);
 	}
+
 	// Set listenfd to manager
 	manager.fds[0].fd = listenfd;
 	manager.fds[0].events = POLLIN;
 	return listenfd;
 }
 
+// 处理client客户端发送的消息
 void handle_client_data(int idx)
 {
 	int connfd = manager.fds[idx].fd;
 	Socket_Packet_t *packet = NULL;
-	int result = recvSocketPacket(connfd, &packet);
+	int result = recvSocketPacket(connfd, &packet); // 接收消息是Socket_Packet_t类型
 	if (result >= 0 && packet != NULL)
 	{
 		// 成功接收到消息，打印消息内容
 		printf("ID %d received message.\n", portnum);
 
-		// back message
+		// back message，在此处进行修改需要返回给control_center进程的测距消息
 		const char *responseMessage = "Message received successfully";
 		Socket_Packet_t responsePacket;
 		memset(&responsePacket, 0, sizeof(responsePacket)); // 初始化responsePacket
 		responsePacket.header.packetLength = sizeof(Socket_Packet_Header_t) + strlen(responseMessage);
 		strncpy(responsePacket.payload, responseMessage, sizeof(responsePacket.payload) - 1); // 复制响应消息到payload
 
-		// send back
+		// send back一接收到Packet，立即send给control_center进程
 		sendSocketPacket(connfd, &responsePacket);
 		// free
 		free(packet);
@@ -188,7 +197,7 @@ void run_poll_loop()
 	}
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]) // argc表示参数的数量，argv记录对应的参数
 {
 	if (argc < 3)
 	{
@@ -200,10 +209,10 @@ int main(int argc, char *argv[])
 		printf("Error: empty string.\n");
 		return 1; // empty string
 	}
-	char *procname = argv[1];
+	char *procname = argv[1]; // server$i
 	char *p;
-	errno = 0; // not 'int errno', because the '#include' already defined it
-	long arg = strtol(argv[2], &p, 10);
+	errno = 0;							// not 'int errno', because the '#include' already defined it
+	long arg = strtol(argv[2], &p, 10); //$i
 	if (*p != '\0' || errno != 0)
 	{
 		printf("Error: port num.\n");
@@ -218,6 +227,7 @@ int main(int argc, char *argv[])
 	portnum = arg;
 
 	// Everything went well, print it as a regular number plus a newline
+	// 涉及到server$i $i
 	printf("The proc name: %s\nThe port num: %d\n", procname, portnum);
 
 	initClientManager(&manager);

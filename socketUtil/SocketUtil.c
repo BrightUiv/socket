@@ -13,7 +13,7 @@ Connection connect_to_server(char *server_ip, int server_port)
     Connection conn;
     conn.sockfd = socket(AF_INET, SOCK_STREAM, 0);
     conn.server_port = server_port;
-    strncpy(conn.server_ip, server_ip, INET_ADDRSTRLEN);
+    strncpy(conn.server_ip, server_ip, INET_ADDRSTRLEN); // 复制16位的字符串
 
     if (conn.sockfd < 0)
     {
@@ -22,9 +22,9 @@ Connection connect_to_server(char *server_ip, int server_port)
         return conn;
     }
 
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in serv_addr; // 服务器地址的结构体
     memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_family = AF_INET; // 表示IPV4
     serv_addr.sin_port = htons(server_port);
 
     if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0)
@@ -47,7 +47,7 @@ Connection connect_to_server(char *server_ip, int server_port)
 
 void send_message(Connection conn, char *message)
 {
-    if (send(conn.sockfd, message, strlen(message), 0) < 0)
+    if (send(conn.sockfd, message, strlen(message), 0) < 0) // send()函数成功，返回值为实际发送的字节数，失败，返回值为-1
     {
         perror("Send failed");
     }
@@ -56,7 +56,7 @@ void send_message(Connection conn, char *message)
 void receive_message(Connection conn)
 {
     char buffer[1024] = {0};
-    if (recv(conn.sockfd, buffer, sizeof(buffer), 0) < 0)
+    if (recv(conn.sockfd, buffer, sizeof(buffer), 0) < 0) //-1表示接受失败，0表示对端正常关闭，返回实际接收到的字节数。如果这个数字小于 len，可能意味着数据流已经完成
     {
         perror("Receive failed");
     }
@@ -87,7 +87,7 @@ int socket_receive_payload(int sockfd, void **packet, size_t *dataLength)
 {
     // recv packet length
     size_t size;
-    int n = recv(sockfd, &size, sizeof(size), 0);
+    int n = recv(sockfd, &size, sizeof(size), 0); // 已连接套接字的文件描述符
     if (n < 0)
     {
         perror("Failed to receive payload size");

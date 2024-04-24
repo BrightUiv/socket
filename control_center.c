@@ -16,6 +16,32 @@
 
 static Connection connect_list[PROC_NUM];
 
+// 需要重新调整位置
+int getIntByIndex(char buffer[], int count_num, const char *delimiter)
+{
+	char buffer_copy[1024];
+	// 复制字符串到新的内存位置
+	strcpy(buffer_copy, buffer);
+
+	char *token;   // 分隔符之间的字符
+	int count = 0; // 重置计数器
+
+	// 使用strtok分割字符串
+	token = strtok(buffer_copy, delimiter);
+	while (token != NULL)
+	{
+		count++;
+		if (count == count_num)
+		{
+			break;
+		}
+		token = strtok(NULL, delimiter); // 继续分割剩余的字符串
+	}
+	// printf("Location %d  return   %s\n", count_num, token);
+
+	return atoi(token);
+}
+
 Connection connectToServer(int port)
 {
 	Connection conn = connect_to_server(SERVER_IP_ADDR, port);
@@ -80,17 +106,18 @@ int main(int argc, char *argv[])
 {
 	FILE *fp;
 	printf("We have a totall of %d CF Proc.\n", PROC_NUM);
-
+	// 打开配置文件
 	fp = fopen("simulate_active.conf", "r");
 	int party_id;
 	char rxtx_type[8];
 	long long timestamp;
-
-	connectAllServer();
+	int count_recv = 0;
+	char buffer[1024];
+	connectAllServer(); // 一个客户端连接所有的服务器
 
 	while (1)
 	{
-		if (fscanf(fp, "%d\t%s\t%llx", &party_id, rxtx_type, &timestamp) == EOF)
+		if (fscanf(fp, "%d\t%s\t%llx\t%d\t%s", &party_id, rxtx_type, &timestamp, &count_recv, buffer) == EOF) // 从配置文件之中读取一行数据
 			break;
 		assert(party_id >= 0);
 		assert(party_id < PROC_NUM);
@@ -98,8 +125,15 @@ int main(int argc, char *argv[])
 		assert(rxtx_type[1] == 'X');
 		assert(rxtx_type[2] == 0);
 		assert(timestamp <= 0xffffffffff);
-		printf("--------\n");
-		printf("%d\t%s\t%llx\n", party_id, rxtx_type, timestamp);
+		printf("----------------------\n");
+		printf("%d\t%s\t%llx\t%d\t%s\n", party_id, rxtx_type, timestamp, count_recv, buffer);
+
+		/**
+		 * 解析simulate.conf文件的一行
+		 * 得到：{srcAddr---TX/RX---timestamp---loss_count---{loss_flies}}---Packet
+		 *
+		 */
+
 		// 向服务器发送消息
 		if (sendToServer(party_id, rxtx_type[0], sizeof(timestamp), (char *)&timestamp) == 0)
 		{
@@ -110,7 +144,7 @@ int main(int argc, char *argv[])
 			printf("Failed to send message to server %d\n", party_id);
 		}
 
-		// 尝试从服务器接收消息
+		// 一发送完就尝试从服务器接收消息
 		if (recvFromServer(connect_list[party_id].sockfd) == 0)
 		{
 			printf("Message received from server %d\n", party_id);
@@ -119,6 +153,13 @@ int main(int argc, char *argv[])
 		{
 			printf("Failed to receive message from server %d\n", party_id);
 		}
+		// 收到
+		for (int i = 0; i < count_recv; i++)
+		{
+			int value = getIntByIndex(buffer, i + 1, ",");
+			printf("fly_id is :%d  ", value);
+		}
+		printf("\n");
 	}
 
 	fclose(fp);
