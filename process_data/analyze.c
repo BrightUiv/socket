@@ -9,8 +9,15 @@ void getLossFlies(FILE *fp, char line[], char *out_str, int count_fly);
 int getCountPart(char line[], const char *delimiter);
 int getCountBodyUnit(char line[], const char *delimiter);
 bool getOneRecvInfo(char *buffer, char *out_str, int count_fly, int src_addr, int msg_seq);
-void getRecvFlies(FILE *fp, char line[], char *out_str, int count_fly);
-char buffer[1024]; // 用于存储文件中的一行
+char *getRecvFlies(FILE *fp, char line[], int count_fly);
+int getCountFlies(FILE *fp);
+double getLatestTxTimestamp(FILE *fp, int src_addr, int seq_number, int count_fly);
+void generateConfig(FILE *fp);
+char *getTxMessage(FILE *fp, char line[], int count_fly);
+int getCountRecvFlies(FILE *fp, char line[], int count_fly);
+
+char buffer[1024];  // 用于存储文件中的一行
+int set[100] = {0}; // 用于记录所有无人机的srcAddress
 
 int main()
 {
@@ -19,10 +26,6 @@ int main()
 
     int count;
     int count_fly = 0; // 记录无人机的数量
-    int index[100];    // 用于计算出无人机的数量
-    int set[100];      // 用于记录无人机的srcAddress
-
-    memset(index, 0, sizeof(index));
 
     // 打开文件
     fp = fopen("output.csv", "r");
@@ -32,21 +35,7 @@ int main()
         return 1;
     }
 
-    // 读取每一行
-    while (fgets(buffer, sizeof(buffer), fp) != NULL)
-    {
-        index[getIntByIndex(buffer, 7, ",")]++;
-    }
-
-    // 计算出无人机的总数
-    for (int i = 0; i < 100; i++)
-    {
-        if (index[i] != 0)
-        {
-            set[count_fly] = i;
-            count_fly++;
-        }
-    }
+    count_fly = getCountFlies(fp);
     printf("Count of fly is %d\n", count_fly);
 
     // 重置文件指针以重新读取文件
@@ -59,16 +48,22 @@ int main()
     int count_line = 0;
     int count_target_line = 15;
     char out_str[1024];
-    while (fgets(buffer, sizeof(buffer), fp) != NULL)
-    {
-        count_line++;
-        if (count_line >= 12)
-        {
-            // getLossFlies(fp, buffer, out_str, 3);
-            getRecvFlies(fp, buffer, out_str, count_fly);
-            printf("count_line : %d  out_str: %s \n", count_line, out_str);
-        }
-    }
+
+    fseek(fp, 0, SEEK_SET);
+    printf("---------------------------------------------------\n");
+    generateConfig(fp);
+    // while (fgets(buffer, sizeof(buffer), fp) != NULL)
+    // {
+    //     count_line++;
+    //     if (count_line >= 12)
+    //     {
+    //         // // getLossFlies(fp, buffer, out_str, 3);
+    //         // getRecvFlies(fp, buffer, out_str, count_fly);
+    //         // printf("count_line : %d  out_str: %s \n", count_line, out_str);
+
+    //         generateConfig(fp);
+    //     }
+    // }
 
     // 关闭文件
     fclose(fp);
@@ -187,31 +182,136 @@ int findStartIndex(FILE *fp, int set[], int number)
     return start_index;
 }
 
-// 为control_center进程生成配置文件
-// 功能:生成对应的配置文件
-// 要点：1.找到一条测距消息的未收到的无人机srcAddress,并且使用一个数组记录下编号
-FILE *generateConfig(FILE *fp)
+/**
+ * 1.生成TX消息，
+ * 2.生成RX消息
+ * 3.一条TX消息下面，多条RX消息
+ */
+
+void generateConfig(FILE *fp)
 {
-    while (1)
+
+    // 其中fp指向文件的首行
+    int count_fly = getCountFlies(fp);
+    FILE *fp_ret; // 返回conf文件指针
+    fp_ret = fopen("simulate.conf", "w");
+    if (fp_ret == NULL)
     {
-        // 生成一个.conf文件
+        perror("Unable to open the conf\n");
     }
-    return NULL;
+
+    int count_line = 0;
+
+    // 生成一个.conf文件
+    while (fgets(buffer, sizeof(buffer), fp) != NULL)
+    {
+        count_line++;
+        if (count_line >= 12)
+        {
+            int index = getIntByIndex(buffer, 11, ",");
+            // 解析一行测距消息，生成TX消息，需要srcAddr、tx_timestamp、
+            char *ptr_tx = getTxMessage(fp, buffer, count_fly);
+            fprintf(fp_ret, "%s\n", ptr_tx);
+            // 对于TX的测距生成和接收无人机数量相等的RX测距消息
+            int count_recv_flies = getCountRecvFlies(fp, buffer, count_fly);
+            char *ptr = getRecvFlies(fp, buffer, count_fly);
+            // printf("count_line %d   content is %s\n", count_line, ptr);
+            int index_r = 1;
+            for (int i = 0; i < count_recv_flies; i++)
+            {
+                int src_addr = getIntByIndex(ptr, index_r, ",");
+                double rx_timestamp = getDoubleByIndex(ptr, index_r + 1, ",");
+                fprintf(fp_ret, "%d RX %f\n", src_addr, rx_timestamp);
+                // printf("Line %d  %d RX %f\n", count_line, src_addr, rx_timestamp);
+                index_r = index_r + 2;
+            }
+            free(ptr);
+        }
+    }
+    printf("count_line is %d \n", count_line);
+    // return fp_ret;
 }
 
 /**
- *功能：获得所有收到这条消息无人机的srcAddr，timestamp
- *
- * */
-void getRecvFlies(FILE *fp, char line[], char *out_str, int count_fly)
+ * 返回一个Tx的测距消息的配置文件的char类型指针
+ * 注意：每次调用getTxMessage()函数的时候，指针已经指向下面一行了
+ */
+char *getTxMessage(FILE *fp, char line[], int count_fly)
 {
+    char *ptr_tx = malloc(100 * sizeof(char));
+    ptr_tx[0] = '\0';
+
+    // 1.获取srcAddr
+    int count_number = (count_fly - 1) * 3;
+    int src_addr = getIntByIndex(line, count_number + 1, ",");
+    char temp[50];
+    sprintf(temp, "%d", src_addr);
+    strcat(ptr_tx, temp); // strcat()结尾会自动加上'\0'
+
+    // 2.加上'TX'
+    strcat(ptr_tx, " TX ");
+
+    // 3.获取tx_timestamp
+    // int seq_number = getIntByIndex(line, count_number + 2, ",");
+    int seq_number = getIntByIndex(line, 8, ",");
+    // printf("seq_number is  %d\n", seq_number);
+    double tx_timestamp = getLatestTxTimestamp(fp, src_addr, seq_number, count_fly);
+    sprintf(temp, "%f", tx_timestamp);
+    strcat(ptr_tx, temp);
+
+    return ptr_tx;
+}
+
+/**
+ * 参数：FILE* fp、int src_addr、int seq_number
+ * 1.从当前文件指针的位置，开始往下一个此架无人机发送的测距消息，并且获取lastTimestamp
+ */
+double getLatestTxTimestamp(FILE *fp, int src_addr, int seq_number, int count_fly)
+{
+    double tx_timestamp = 0;
+    char buffer[500];
+    long long initial_pos = ftell(fp); // 获取文件当前的位置
+
+    int index_body_unit = 1;
+    for (int j = 0; j <= count_fly + 3; j++) // TODO:这个地方存在点问题，多往下几行
+    {
+        if (fgets(buffer, sizeof(buffer), fp) != NULL)
+        {
+
+            int addr = getIntByIndex(buffer, 7, ",");
+            int seq_number_last = getIntByIndex(buffer, 10, ",");
+            // printf("addr is: %d seq_number_last is %d  src_addr is %d seq_number is %d\n", addr, seq_number_last, src_addr, seq_number);
+            if (addr == src_addr && seq_number_last == seq_number)
+            {
+                tx_timestamp = getDoubleByIndex(buffer, 9, ",");
+                fseek(fp, initial_pos, SEEK_SET);
+
+                return tx_timestamp;
+                // printf("timestamp is %f\n", tx_timestamp);
+            }
+        }
+        else
+        {
+            printf("reach the end of the file\n");
+        }
+    }
+
+    fseek(fp, initial_pos, SEEK_SET);
+    return -1111.111111;
+}
+
+int getCountRecvFlies(FILE *fp, char line[], int count_fly)
+{
+    int count_recv_flies = 0;
+
+    char *ptr_ret = malloc(512 * sizeof(char));
     if (fp == NULL)
     {
         printf("File pointer is null.\n");
-        return;
+        return -1;
     }
 
-    out_str[0] = '\0'; // 初始化输出字符串
+    ptr_ret[0] = '\0'; // 初始化输出字符串
 
     long initial_pos = ftell(fp); // 获取文件的当前位置
     /* TODO:定位msg_seq的时候 */
@@ -221,7 +321,7 @@ void getRecvFlies(FILE *fp, char line[], char *out_str, int count_fly)
     if (initial_pos == -1)
     {
         perror("Failed to get the file position");
-        return;
+        return -1;
     }
 
     // 开辟一块缓冲区,用于读取文件内容一行
@@ -230,17 +330,69 @@ void getRecvFlies(FILE *fp, char line[], char *out_str, int count_fly)
     // 连续读取count_fly-1行的测距消息
     for (int i = 1; i <= count_fly - 1; i++)
     {
-        char temp[50]; // 临时存储每个整数的字符串表示
         if (fgets(buffer, sizeof(buffer), fp) == NULL)
         {
             printf("Failed to read line or end of file reached.\n");
             break;
         }
 
-        getOneRecvInfo(buffer, out_str, count_fly, src_addr, msg_seq);
+        if (getOneRecvInfo(buffer, ptr_ret, count_fly, src_addr, msg_seq) == true)
+        {
+            count_recv_flies++;
+        }
     }
 
     fseek(fp, initial_pos, SEEK_SET);
+    free(ptr_ret);
+    return count_recv_flies;
+}
+/**
+ *功能：获得所有收到这条消息无人机的srcAddr，timestamp
+        分析这条TX消息之下的所有RX信息
+ *
+ * */
+char *getRecvFlies(FILE *fp, char line[], int count_fly)
+{
+    char *ptr_ret = (char *)malloc(1024 * sizeof(char));
+    if (ptr_ret != NULL)
+    {
+        memset(ptr_ret, 0, 1024);
+    }
+    if (fp == NULL)
+    {
+        printf("File pointer is null.\n");
+        return NULL;
+    }
+
+    ptr_ret[0] = '\0'; // 初始化输出字符串
+
+    long initial_pos = ftell(fp); // 获取文件的当前位置
+    /* TODO:定位msg_seq的时候 */
+    int msg_seq = getIntByIndex(line, 8, ",");
+    int src_addr = getIntByIndex(line, 7, ",");
+
+    if (initial_pos == -1)
+    {
+        perror("Failed to get the file position");
+        return NULL;
+    }
+
+    // 开辟一块缓冲区,用于读取文件内容一行
+    char buffer[1024];
+
+    // 连续读取count_fly-1行的测距消息
+    for (int i = 1; i <= count_fly - 1; i++)
+    {
+        if (fgets(buffer, sizeof(buffer), fp) == NULL)
+        {
+            printf("Failed to read line or end of file reached.\n");
+            break;
+        }
+        getOneRecvInfo(buffer, ptr_ret, count_fly, src_addr, msg_seq);
+    }
+
+    fseek(fp, initial_pos, SEEK_SET);
+    return ptr_ret;
 }
 
 /**
@@ -319,8 +471,10 @@ bool checkIsReceived(char *buffer, int count_fly, int src_addr, int msg_seq)
 
     return false;
 }
+
 /**
- * 返回值：一条接收消息无人机的srcAddr,timestamp
+ * 返回值：一条接收消息无人机的srcAddr,timestamp,
+ * 功能：分析一条TX往下一行的测距消息
  */
 bool getOneRecvInfo(char *buffer, char *out_str, int count_fly, int src_addr, int msg_seq)
 {
@@ -330,19 +484,19 @@ bool getOneRecvInfo(char *buffer, char *out_str, int count_fly, int src_addr, in
         int address = getIntByIndex(buffer, pos_addr, ",");
         int seq_number = getIntByIndex(buffer, pos_addr + 1, ",");
         double rx_timestamp = getDoubleByIndex(buffer, pos_addr + 2, ",");
-        char temp[50];
 
+        char temp[50];
         int my_address = getIntByIndex(buffer, 7, ",");
         if (address == src_addr && seq_number == msg_seq)
         {
 
-            sprintf(temp, "%d", address);
-            strcat(out_str, ",");
+            sprintf(temp, "%d", my_address);
             strcat(out_str, temp); // strcat必须要以'\0' 空终止字符结尾
+            strcat(out_str, ",");
 
             sprintf(temp, "%f", rx_timestamp); // sprintf() 自动在输出的字符串末尾添加 \0
-            strcat(out_str, ",");
             strcat(out_str, temp);
+            strcat(out_str, ",");
 
             return true; // 表示这架无人机收到上一次的群发消息
         }
@@ -382,4 +536,28 @@ int getCountPart(char line[], const char *delimiter)
         token = strtok(NULL, delimiter); // 继续分割剩余的字符串
     }
     return total_count;
+}
+
+int getCountFlies(FILE *fp)
+{
+    int index[100] = {0}; // 用于计算出无人机的数量
+    char buffer[520];
+    int count_fly = 0;
+
+    while (fgets(buffer, sizeof(buffer), fp) != NULL)
+    {
+        index[getIntByIndex(buffer, 7, ",")]++;
+    }
+
+    // 计算出无人机的总数
+    for (int i = 0; i < 100; i++)
+    {
+        if (index[i] != 0)
+        {
+            set[count_fly] = i;
+            count_fly++;
+        }
+    }
+    fseek(fp, 0, SEEK_SET);
+    return count_fly;
 }
