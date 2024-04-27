@@ -8,10 +8,16 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+/**
+ * 功能：客户端尝试向服务器建立连接
+ * 1.生成客户端的socket
+ * 2.初始化服务器的sev_addr
+ * 3.客户端通过connect()连接服务器
+ */
 Connection connect_to_server(char *server_ip, int server_port)
 {
     Connection conn;
-    conn.sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    conn.sockfd = socket(AF_INET, SOCK_STREAM, 0); // 客户端的socket套接字
     conn.server_port = server_port;
     strncpy(conn.server_ip, server_ip, INET_ADDRSTRLEN); // 复制16位的字符串
 
@@ -24,10 +30,10 @@ Connection connect_to_server(char *server_ip, int server_port)
 
     struct sockaddr_in serv_addr; // 服务器地址的结构体
     memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET; // 表示IPV4
-    serv_addr.sin_port = htons(server_port);
+    serv_addr.sin_family = AF_INET;          // 表示IPV4，sin:socket internet
+    serv_addr.sin_port = htons(server_port); // 将端口号的格式由主机字节顺序，转换为网络字节顺序
 
-    if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0)
+    if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) // 将点分十进制的IP地址字符串转换为用于网络传输的数值格式
     {
         perror("Invalid address/ Address not supported");
         close(conn.sockfd);
@@ -35,7 +41,7 @@ Connection connect_to_server(char *server_ip, int server_port)
         return conn;
     }
 
-    if (connect(conn.sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    if (connect(conn.sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) // 客户端向服务器发出请求，尝试通信
     {
         perror("Connection Failed");
         close(conn.sockfd);
@@ -83,6 +89,9 @@ int socket_send_payload(int sockfd, const void *payload, size_t dataLength)
     return 0;
 }
 
+/**
+ * 功能：从特定的socket之中读取packet和size，control_center进程调用
+ */
 int socket_receive_payload(int sockfd, void **packet, size_t *dataLength)
 {
     // recv packet length
@@ -117,4 +126,4 @@ int socket_receive_payload(int sockfd, void **packet, size_t *dataLength)
 
     *dataLength = size;
     return 0;
-}
+}   

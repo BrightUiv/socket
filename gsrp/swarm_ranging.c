@@ -1477,7 +1477,7 @@ void rangingRxCallback(void *parameters)
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;//
 
   dwTime_t rxTime;
   //   dwt_readrxtimestamp((uint8_t *)&rxTime.raw); todo

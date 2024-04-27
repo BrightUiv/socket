@@ -1,5 +1,8 @@
 #include "message_struct.h"
 
+/**
+ * 功能：通过调用send()函数，传递测距消息socket_packet
+ */
 int sendSocketPacket(int sockfd, Socket_Packet_t *packet)
 {
     if (send(sockfd, packet, packet->header.packetLength, 0) == -1) // 文件描述符，packet包，头部，标志

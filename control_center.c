@@ -42,6 +42,10 @@ int getIntByIndex(char buffer[], int count_num, const char *delimiter)
 	return atoi(token);
 }
 
+/**
+ * 参数为：ip地址+端口号
+ * ip 地址为127.0.0.1,
+ */
 Connection connectToServer(int port)
 {
 	Connection conn = connect_to_server(SERVER_IP_ADDR, port);
@@ -56,6 +60,10 @@ Connection connectToServer(int port)
 	return conn;
 }
 
+/**
+ * 功能：control_center客户端，连接所有的服务器
+ * 服务器：ip地址为127.0.0.1，端口号为for循环之中传入的参数
+ */
 void connectAllServer()
 {
 	for (int i = 0; i < PROC_NUM; i++)
@@ -73,17 +81,24 @@ void disconnectAllServer()
 	}
 }
 
+/**
+ * 功能：将control_center的消息，封装成一个socket_packet
+ */
 int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *payload)
 {
 	Socket_Packet_t packet;
 	memset(&packet, 0, sizeof(packet));
 	packet.header.packetLength = sizeof(Socket_Packet_Header_t) + payloadLength;
 	packet.header.type = rtxType; // todo use typedef enum to define meaningful type
+	// 将payload封装在packet中的payload发送过去
 	strncpy(packet.payload, payload, payloadLength);
 
 	return sendSocketPacket(connect_list[partyID].sockfd, &packet);
 }
 
+/**
+ * 功能：从服务器swarm_ranging进程读取socekt_packet消息
+ */
 int recvFromServer(int sockfd)
 {
 	Socket_Packet_t *packet = NULL;
@@ -107,17 +122,17 @@ int main(int argc, char *argv[])
 	FILE *fp;
 	printf("We have a totall of %d CF Proc.\n", PROC_NUM);
 	// 打开配置文件
-	fp = fopen("simulate_active.conf", "r");
+	fp = fopen("../process_data/simulate.conf", "r");
 	int party_id;
 	char rxtx_type[8];
 	long long timestamp;
 	int count_recv = 0;
 	char buffer[1024];
-	connectAllServer(); // 一个客户端连接所有的服务器
+	connectAllServer(); // control_center客户端连接所有的服务器
 
 	while (1)
 	{
-		if (fscanf(fp, "%d\t%s\t%llx\t%d\t%s", &party_id, rxtx_type, &timestamp, &count_recv, buffer) == EOF) // 从配置文件之中读取一行数据
+		if (fscanf(fp, "%d\t%s\t%llx", &party_id, rxtx_type, &timestamp) == EOF) // 从配置文件之中读取一行数据
 			break;
 		assert(party_id >= 0);
 		assert(party_id < PROC_NUM);
@@ -126,15 +141,16 @@ int main(int argc, char *argv[])
 		assert(rxtx_type[2] == 0);
 		assert(timestamp <= 0xffffffffff);
 		printf("----------------------\n");
-		printf("%d\t%s\t%llx\t%d\t%s\n", party_id, rxtx_type, timestamp, count_recv, buffer);
+		printf("%d\t%s\t%llx", party_id, rxtx_type, timestamp);
 
 		/**
 		 * 解析simulate.conf文件的一行
-		 * 得到：{srcAddr---TX/RX---timestamp---loss_count---{loss_flies}}---Packet
+		 * 得到：{srcAddr---TX/RX---timestamp}---Packet
 		 *
 		 */
 
-		// 向服务器发送消息
+		// 向服务器发送消息，主要是payload的部分
+		// party_id对应src_addr,rxtx_type[0]传递的是ASCII值
 		if (sendToServer(party_id, rxtx_type[0], sizeof(timestamp), (char *)&timestamp) == 0)
 		{
 			printf("Message sent to server %d\n", party_id);
@@ -145,7 +161,7 @@ int main(int argc, char *argv[])
 		}
 
 		// 一发送完就尝试从服务器接收消息
-		if (recvFromServer(connect_list[party_id].sockfd) == 0)
+		if (recvFromServer(connect_list[party_id].sockfd) == 0) // 这个函数的使用存在点疑惑
 		{
 			printf("Message received from server %d\n", party_id);
 		}

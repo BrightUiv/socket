@@ -26,8 +26,13 @@ typedef struct
 } ClientManager;
 
 ClientManager manager;
+/**
+ * 一个服务器，它需要同时处理多个客户端连接。你可以使用 ClientManager 来跟踪每个客户端的连接状态以及服务器的监听套接字。
+ */
 
-// 初始化ClientManager
+/**
+ * 功能：初始化ClientManager
+ */
 void initClientManager(ClientManager *manager)
 {
 	manager->count = 0;
@@ -38,8 +43,9 @@ void initClientManager(ClientManager *manager)
 		manager->fds[i].revents = 0;
 	}
 }
-
-// 接受来自客户端的连接
+/**
+ * 接收新的客户端端control_center的文件描述符
+ */
 void accept_new_connection()
 {
 	struct sockaddr_in client_addr;
@@ -50,6 +56,7 @@ void accept_new_connection()
 		perror("accept");
 		return;
 	}
+	// 存放在manager的数组之中进行寄存
 	manager.count++;
 	manager.fds[manager.count].fd = connfd;
 	manager.fds[manager.count].events = POLLIN;
@@ -61,6 +68,9 @@ void accept_new_connection()
 	}
 }
 
+/**
+ * 功能：关闭所有的socket连接，通过socket描述符fd来实现
+ */
 void handle_sigint(int sig)
 {
 	stop = 1;
@@ -75,7 +85,10 @@ void handle_sigint(int sig)
 		}
 	}
 }
-
+/**
+ * 功能：程序执行过程中处理特定事件（在这种情况下是信号）的方法
+ * SIGINT:CTRL+C终止程序
+ */
 void setup_signal_handler()
 {
 	signal(SIGINT, handle_sigint);
@@ -91,24 +104,26 @@ void close_and_clear_client(int idx)
 	}
 }
 
-// 初始化
+/**
+ * 功能：设置一个用于接收客户端连接的套接字
+ */
 int init_server_socket(int port) // port为绑定的端口号
 {
-	listenfd = socket(AF_INET, SOCK_STREAM, 0);
-	// 准备一个套接字，用于TCP网络通信，支持 IPv4 地址
+	listenfd = socket(AF_INET, SOCK_STREAM, 0); // 一个文件描述符，用来唯一标识新创建的套接字
 	if (listenfd < 0)
 	{
 		perror("socket creation failed");
 		exit(EXIT_FAILURE);
 	}
 
-	struct sockaddr_in serv_addr;
+	struct sockaddr_in serv_addr; // 一个结构体，用来保存互联网地址
 	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serv_addr.sin_port = htons(port);
+	serv_addr.sin_family = AF_INET;				   // ipv4
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); // host to network long 表示服务器套接字接受所有可用的网络接口上的连接
+	// 表示"所有IP地址"或"任意IP地址"
+	serv_addr.sin_port = htons(port); // host to network short 提供的端口号从主机字节顺序转换为网络字节顺序（对于短整型）
 
-	// 绑定套接字到端口port
+	// 函数将 serv_addr 中的地址和端口信息绑定到 listenfd 指定的套接字上
 	if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
 	{
 		perror("bind failed");
@@ -116,7 +131,7 @@ int init_server_socket(int port) // port为绑定的端口号
 		exit(EXIT_FAILURE);
 	}
 
-	// 监听套接字
+	// 函数设置服务器套接字listenfd为监听状态，MAX_CLIENTS 定义了队列中最多可以有多少客户端等待连接。
 	if (listen(listenfd, MAX_CLIENTS) < 0)
 	{
 		perror("listen failed");
@@ -130,12 +145,15 @@ int init_server_socket(int port) // port为绑定的端口号
 	return listenfd;
 }
 
-// 处理client客户端发送的消息
+/**
+ * 功能：处理control_center客户端发送过来的socket_packet消息
+ * 参数：idx表示swarm_ranging服务器管理的socket连接字
+ */
 void handle_client_data(int idx)
 {
 	int connfd = manager.fds[idx].fd;
 	Socket_Packet_t *packet = NULL;
-	int result = recvSocketPacket(connfd, &packet); // 接收消息是Socket_Packet_t类型
+	int result = recvSocketPacket(connfd, &packet); // connf表示申请通信的客户端
 	if (result >= 0 && packet != NULL)
 	{
 		// 成功接收到消息，打印消息内容
@@ -143,8 +161,10 @@ void handle_client_data(int idx)
 
 		// back message，在此处进行修改需要返回给control_center进程的测距消息
 		const char *responseMessage = "Message received successfully";
+
 		Socket_Packet_t responsePacket;
 		memset(&responsePacket, 0, sizeof(responsePacket)); // 初始化responsePacket
+
 		responsePacket.header.packetLength = sizeof(Socket_Packet_Header_t) + strlen(responseMessage);
 		strncpy(responsePacket.payload, responseMessage, sizeof(responsePacket.payload) - 1); // 复制响应消息到payload
 
@@ -167,6 +187,9 @@ void handle_client_data(int idx)
 	}
 }
 
+/**
+ * 功能：处理新的测距消息或者添加新的连接
+ */
 void run_poll_loop()
 {
 	while (!stop)
@@ -186,7 +209,7 @@ void run_poll_loop()
 		{
 			accept_new_connection();
 		}
-
+		// while循环之中不断地处理收到的测距消息
 		for (int i = 1; i < manager.count + 1; i++)
 		{
 			if (manager.fds[i].fd != -1 && manager.fds[i].revents & POLLIN)
@@ -197,6 +220,7 @@ void run_poll_loop()
 	}
 }
 
+//  连续三次启动   ./swarm_ranging_proc server$i $i &
 int main(int argc, char *argv[]) // argc表示参数的数量，argv记录对应的参数
 {
 	if (argc < 3)
@@ -212,7 +236,7 @@ int main(int argc, char *argv[]) // argc表示参数的数量，argv记录对应
 	char *procname = argv[1]; // server$i
 	char *p;
 	errno = 0;							// not 'int errno', because the '#include' already defined it
-	long arg = strtol(argv[2], &p, 10); //$i
+	long arg = strtol(argv[2], &p, 10); //$i，10表示十进制，用于端口号
 	if (*p != '\0' || errno != 0)
 	{
 		printf("Error: port num.\n");
@@ -230,13 +254,13 @@ int main(int argc, char *argv[]) // argc表示参数的数量，argv记录对应
 	// 涉及到server$i $i
 	printf("The proc name: %s\nThe port num: %d\n", procname, portnum);
 
-	initClientManager(&manager);
+	initClientManager(&manager); // 初始化pollfd[]数组
 
-	setup_signal_handler();
+	setup_signal_handler(); // ctrl+c实现关闭所有套接字的连接
 
-	listenfd = init_server_socket(50627 + portnum);
+	listenfd = init_server_socket(50627 + portnum); // 设置一个服务器进程swarm_ranging监听所有客户端程序的套接字listenfd
 
-	run_poll_loop(&manager);
+	run_poll_loop(&manager); // 对于swarm_ranging维护的数据结构进行检查
 
-	close(listenfd);
+	close(listenfd); // 依据文件描述符，socket连接
 }
