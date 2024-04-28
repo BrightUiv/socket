@@ -17,6 +17,6 @@ typedef struct
 
 int sendSocketPacket(int sockfd, Socket_Packet_t *packet);
 
-int recvSocketPacket(int sockfd, Socket_Packet_t **packet);
+int recvSocketPacket(int sockfd, Socket_Packet_t *packet);
 
 #endif // MESSAGE_STRUCT

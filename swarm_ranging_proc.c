@@ -152,9 +152,9 @@ int init_server_socket(int port) // port为绑定的端口号
 void handle_client_data(int idx)
 {
 	int connfd = manager.fds[idx].fd;
-	Socket_Packet_t *packet = NULL;
+	Socket_Packet_t packet;
 	int result = recvSocketPacket(connfd, &packet); // connf表示申请通信的客户端
-	if (result >= 0 && packet != NULL)
+	if (result >= 0)
 	{
 		// 成功接收到消息，打印消息内容
 		printf("ID %d received message.\n", portnum);
@@ -170,8 +170,6 @@ void handle_client_data(int idx)
 
 		// send back一接收到Packet，立即send给control_center进程
 		sendSocketPacket(connfd, &responsePacket);
-		// free
-		free(packet);
 	}
 	else
 	{

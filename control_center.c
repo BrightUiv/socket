@@ -101,13 +101,12 @@ int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *pay
  */
 int recvFromServer(int sockfd)
 {
-	Socket_Packet_t *packet = NULL;
+	Socket_Packet_t packet;
 	int result = recvSocketPacket(sockfd, &packet);
-	if (result == 0 && packet != NULL)
+	if (result == 0)
 	{
 		// 成功接收到消息，处理消息...
-		printf("Received message: %s\n", packet->payload);
-		free(packet); // 记得释放分配的内存
+		printf("Received message: %s\n", packet.payload);
 		return 0;
 	}
 	else

@@ -13,10 +13,10 @@ int sendSocketPacket(int sockfd, Socket_Packet_t *packet)
     return 0;
 }
 
-int recvSocketPacket(int sockfd, Socket_Packet_t **packet)
+int recvSocketPacket(int sockfd, Socket_Packet_t *packet)
 {
     size_t packet_size;
 
     // recv packet
-    return socket_receive_payload(sockfd, (void **)packet, &packet_size); // 文件描述符，packet地址，packet_size
+    return socket_receive_payload(sockfd, (void *)packet, &packet_size);
 }

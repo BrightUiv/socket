@@ -35,6 +35,6 @@ void receive_message(Connection conn);
 
 int socket_send_payload(int sockfd, const void *payload, size_t payload_size);
 
-int socket_receive_payload(int sockfd, void **payload, size_t *payload_size);
+int socket_receive_payload(int sockfd, void *packet, size_t *dataLength);
 
 #endif
