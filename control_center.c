@@ -64,12 +64,16 @@ Connection connectToServer(int port)
  * 功能：control_center客户端，连接所有的服务器
  * 服务器：ip地址为127.0.0.1，端口号为for循环之中传入的参数
  */
-void connectAllServer()
+int connectAllServer()
 {
+	int isFailed = 0;
 	for (int i = 0; i < PROC_NUM; i++)
 	{
 		connect_list[i] = connectToServer(SERVER_PORT_START + i);
+		if (connect_list->sockfd < 0)
+			isFailed = 1;
 	}
+	return isFailed;
 }
 
 void disconnectAllServer()
@@ -126,14 +130,18 @@ int main(int argc, char *argv[])
 	char rxtx_type[8];
 	long long timestamp;
 	int count_recv = 0;
-	//	connectAllServer(); // control_center客户端连接所有的服务器
-
-	for (int i = 0; i < 4; i++)
+	int isFailed = connectAllServer(); // control_center客户端连接所有的服务器
+	if (isFailed != 0)
 	{
-		printf("fscanf\n");
+		printf("Connect to Servers failed\n");
+		return -1;
+	}
+	printf("Connect to Servers success\n");
+
+	while(1)
+	{
 		if (fscanf(fp, "%d\t%s\t%llx", &party_id, rxtx_type, &timestamp) == EOF) // 从配置文件之中读取一行数据
 			break;
-		printf("assert\n");
 		assert(party_id >= 0);
 		assert(party_id < PROC_NUM);
 		assert(rxtx_type[0] == 'R' || rxtx_type[0] == 'T');
@@ -141,16 +149,18 @@ int main(int argc, char *argv[])
 		assert(rxtx_type[2] == 0);
 		assert(timestamp <= 0xffffffffff);
 		printf("----------------------\n");
-		printf("%d\t%s\t%llx", party_id, rxtx_type, timestamp);
+		printf("%d\t%s\t%llx\n", party_id, rxtx_type, timestamp);
 
 		/**
 		 * 解析simulate.conf文件的一行
 		 * 得到：{srcAddr---TX/RX---timestamp}---Packet
 		 *
 		 */
-
-		// 向服务器发送消息，主要是payload的部分
-		// party_id对应src_addr,rxtx_type[0]传递的是ASCII值
+		// printf("before continue\n");
+		// continue;
+		// printf("after continue\n");
+		//  向服务器发送消息，主要是payload的部分
+		//  party_id对应src_addr,rxtx_type[0]传递的是ASCII值
 		if (sendToServer(party_id, rxtx_type[0], sizeof(timestamp), (char *)&timestamp) == 0)
 		{
 			printf("Message sent to server %d\n", party_id);
@@ -170,6 +180,7 @@ int main(int argc, char *argv[])
 			printf("Failed to receive packet from server %d\n", party_id);
 		}
 		printf("\n");
+		break;
 	}
 
 	printf("fclose\n");

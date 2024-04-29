@@ -89,10 +89,6 @@ ssize_t receive_packet(Connection conn, const void *packet, size_t packet_size)
     {
         perror("Packet Receive failed");
     }
-    else
-    {
-        printf("Packet Received from server %s:%d with length %ld\n", conn.server_ip, conn.server_port, recved_size);
-    }
     return recved_size;
 }
 

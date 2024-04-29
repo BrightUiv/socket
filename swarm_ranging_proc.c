@@ -15,7 +15,6 @@
 volatile sig_atomic_t stop; // process ctrl+c
 int listenfd = -1;
 int portnum = -1;
-char *procname = 0; // server$i
 
 #define TIMEOUT -1	   // Poll wait forever
 #define MAX_CLIENTS 20 // 客户端：swarm_ranging进程最大数量
@@ -158,7 +157,7 @@ void handle_client_data(int idx)
 	if (result >= 0)
 	{
 		// 成功接收到消息，打印消息内容
-		printf("%s:\tID %d received message.\n", procname, portnum);
+		printf("(%d): received packet with length %d.\n", portnum, result);
 
 		// back message，在此处进行修改需要返回给control_center进程的测距消息
 		const char *responseMessage = "Message received successfully";
