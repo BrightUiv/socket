@@ -84,7 +84,7 @@ void disconnectAllServer()
 /**
  * 功能：将control_center的消息，封装成一个socket_packet
  */
-int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *payload)
+int sendToServer(int partyID, int rtxType, const void *payload, size_t payloadLength)
 {
 	Socket_Packet_t packet;
 	memset(&packet, 0, sizeof(packet));
@@ -93,27 +93,22 @@ int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *pay
 	// 将payload封装在packet中的payload发送过去
 	strncpy(packet.payload, payload, payloadLength);
 
-	return sendSocketPacket(connect_list[partyID].sockfd, &packet);
+	return send_packet(connect_list[partyID], &packet, sizeof(packet));
 }
 
 /**
  * 功能：从服务器swarm_ranging进程读取socekt_packet消息
  */
-int recvFromServer(int sockfd)
+// int sendToServer(int partyID, int rtxType, const void *payload, size_t payloadLength)
+ssize_t recvFromServer(int partyID)
 {
 	Socket_Packet_t packet;
-	int result = recvSocketPacket(sockfd, &packet);
-	if (result == 0)
+	ssize_t result = receive_packet(connect_list[partyID], &packet, sizeof(packet));
+	if (result > 0)
 	{
-		// 成功接收到消息，处理消息...
-		printf("Received message: %s\n", packet.payload);
-		return 0;
+		printf("Received packet, with length: %ld\n", result);
 	}
-	else
-	{
-		// 接收失败
-		return -1;
-	}
+	return result;
 }
 
 int main(int argc, char *argv[])
@@ -121,18 +116,24 @@ int main(int argc, char *argv[])
 	FILE *fp;
 	printf("We have a totall of %d CF Proc.\n", PROC_NUM);
 	// 打开配置文件
-	fp = fopen("../process_data/simulate.conf", "r");
+	fp = fopen("simulate_active.conf", "r");
+	if (fp == NULL)
+	{
+		perror("Failed to open file");
+		return -1;
+	}
 	int party_id;
 	char rxtx_type[8];
 	long long timestamp;
 	int count_recv = 0;
-	char buffer[1024];
-	connectAllServer(); // control_center客户端连接所有的服务器
+	//	connectAllServer(); // control_center客户端连接所有的服务器
 
-	while (1)
+	for (int i = 0; i < 4; i++)
 	{
+		printf("fscanf\n");
 		if (fscanf(fp, "%d\t%s\t%llx", &party_id, rxtx_type, &timestamp) == EOF) // 从配置文件之中读取一行数据
 			break;
+		printf("assert\n");
 		assert(party_id >= 0);
 		assert(party_id < PROC_NUM);
 		assert(rxtx_type[0] == 'R' || rxtx_type[0] == 'T');
@@ -160,24 +161,20 @@ int main(int argc, char *argv[])
 		}
 
 		// 一发送完就尝试从服务器接收消息
-		if (recvFromServer(connect_list[party_id].sockfd) == 0) // 这个函数的使用存在点疑惑
+		if (recvFromServer(party_id) > 0) // 这个函数的使用存在点疑惑
 		{
-			printf("Message received from server %d\n", party_id);
+			printf("Packet received from server %d\n", party_id);
 		}
 		else
 		{
-			printf("Failed to receive message from server %d\n", party_id);
-		}
-		// 收到
-		for (int i = 0; i < count_recv; i++)
-		{
-			int value = getIntByIndex(buffer, i + 1, ",");
-			printf("fly_id is :%d  ", value);
+			printf("Failed to receive packet from server %d\n", party_id);
 		}
 		printf("\n");
 	}
 
+	printf("fclose\n");
 	fclose(fp);
+	printf("disconnectAllServer\n");
 	disconnectAllServer();
 
 	return 0;

@@ -72,6 +72,30 @@ void receive_message(Connection conn)
     }
 }
 
+ssize_t send_packet(Connection conn, const void *packet, size_t packet_size)
+{
+    ssize_t sent_size = send(conn.sockfd, packet, packet_size, 0);
+    if (sent_size < 0)
+    {
+        perror("Send failed");
+    }
+    return sent_size;
+}
+
+ssize_t receive_packet(Connection conn, const void *packet, size_t packet_size)
+{
+    ssize_t recved_size = recv(conn.sockfd, packet, packet_size, 0);
+    if (recved_size < 0)
+    {
+        perror("Packet Receive failed");
+    }
+    else
+    {
+        printf("Packet Received from server %s:%d with length %ld\n", conn.server_ip, conn.server_port, recved_size);
+    }
+    return recved_size;
+}
+
 int socket_send_payload(int sockfd, const void *payload, size_t dataLength)
 {
     if (send(sockfd, &dataLength, sizeof(dataLength), 0) == -1)
