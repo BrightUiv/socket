@@ -38,6 +38,8 @@
 #define RANGING_RX_QUEUE_ITEM_SIZE sizeof(Ranging_Message_With_Timestamp_t)
 #define RANGING_RX_QUEUE_SIZE 5
 
+typedef struct itimerval timer_t;
+typedef timer_t TimerHandle_t;
 //---------------------------------------------------------------------------------------------------------
 static UWB_Message_Listener_t listener;
 static timer_t neighborSetEvictionTimer;

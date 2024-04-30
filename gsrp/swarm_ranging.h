@@ -59,7 +59,6 @@ typedef short set_index_t;
 //--------------------------------------------------------------------------------------------------------------------------
 typedef uint32_t Time_t;//自己添加，无法通过引入头文件来实现，FreeRTOS.h头文件不应该被引入
 // typedef pthread_mutex_t SemaphoreHandle_t;
-typedef timer_t TimerHandle_t;
 #define pdFALSE    0 
 #define M2T(X) ((unsigned int)(X))
 #define portMAX_DELAY              ( TickType_t ) 0xffffffffUL
