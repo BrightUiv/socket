@@ -269,6 +269,7 @@ extern Ranging_Table_Set_t rangingTableSet;
 extern SemaphoreHandle_t TfBufferMutex;
 extern Neighbor_Set_t neighborSet;
 extern TimerHandle_t rangingTableSetEvictionTimer;
+extern SemaphoreHandle_t readyToGenerateAndSend;
 //----------------------------------------------------------------------------------------------------------------------------
 
 #endif

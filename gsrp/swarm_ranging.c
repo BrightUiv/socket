@@ -47,6 +47,7 @@ static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int rangingSeqNumber = 1;
 static uint32_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
+
 static Ranging_Table_t EMPTY_RANGING_TABLE = {
     .neighborAddress = UWB_DEST_EMPTY,
     .Rp.timestamp.full = 0,
@@ -1434,10 +1435,14 @@ static void uwbRangingTxTask(void *parameters)
 
   while (true)
   {
+    DEBUG_PRINT("xSemaphoreTake(readyToGenerateAndSend, portMAX_DELAY), before\n");
+    xSemaphoreTake(readyToGenerateAndSend, portMAX_DELAY);
+    DEBUG_PRINT("xSemaphoreTake(readyToGenerateAndSend, portMAX_DELAY), after\n");
     xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
     xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
     Time_t taskDelay = generateRangingMessage(rangingMessage);
+    taskDelay = 0; // todo send taskDelay to the control center
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
     //    printRangingTableSet(&rangingTableSet);
@@ -1477,7 +1482,7 @@ void rangingRxCallback(void *parameters)
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;//
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters; //
 
   dwTime_t rxTime;
   //   dwt_readrxtimestamp((uint8_t *)&rxTime.raw); todo

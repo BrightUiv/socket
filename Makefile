@@ -2,7 +2,7 @@ CC=gcc
 PROC_NUM=3
 
 # Define compile-time flags
-CFLAGS=-Wall -DPROC_NUM=$(PROC_NUM)
+CFLAGS=-Wall -DPROC_NUM=$(PROC_NUM) -Igsrp -Igsrp/libdw3000 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1 -lpthread
 
 # Define the target executable
 TARGET_SERVER=swarm_ranging_proc

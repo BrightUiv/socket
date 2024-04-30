@@ -28,5 +28,9 @@
             " */"
         ],
         "description": "Document a C function."
+    },
+    "files.associations": {
+        "stdio.h": "c",
+        "types.h": "c"
     }
 }
