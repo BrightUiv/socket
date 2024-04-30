@@ -87,8 +87,7 @@ void disconnectAllServer()
 
 /**
  * 功能：将control_center的消息，封装成一个socket_packet
- */
-int sendToServer(int partyID, int rtxType, const void *payload, size_t payloadLength)
+int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *payload)
 {
 	Socket_Packet_t packet;
 	memset(&packet, 0, sizeof(packet));
@@ -97,22 +96,61 @@ int sendToServer(int partyID, int rtxType, const void *payload, size_t payloadLe
 	// 将payload封装在packet中的payload发送过去
 	strncpy(packet.payload, payload, payloadLength);
 
-	return send_packet(connect_list[partyID], &packet, sizeof(packet));
+	return sendSocketPacket(connect_list[partyID].sockfd, &packet);
+}
+ */
+
+/**
+ * 功能：从服务器swarm_ranging进程读取socekt_packet消息
+int recvFromServer(int sockfd)
+{
+	Socket_Packet_t *packet = NULL;
+	int result = recvSocketPacket(sockfd, &packet);
+	if (result == 0 && packet != NULL)
+	{
+		// 成功接收到消息，处理消息...
+		printf("Received message: %s\n", packet->payload);
+		free(packet); // 记得释放分配的内存
+		return 0;
+	}
+	else
+	{
+		// 接收失败
+		return -1;
+	}
+}
+*/
+/**
+ * 功能：将control_center的消息，封装成一个socket_packet
+ */
+int sendPayloadTo(int partyID, int rtxType, const void *payload, size_t payloadLength)
+{
+	Socket_Packet_t packet;
+	memset(&packet, 0, sizeof(packet));
+	packet.header.packetLength = sizeof(Socket_Packet_Header_t) + payloadLength;
+	packet.header.type = rtxType; // todo use typedef enum to define meaningful type
+	// 将payload封装在packet中的payload发送过去
+	strncpy(packet.payload, payload, payloadLength);
+
+	return send_packet(connect_list[partyID], &packet, packet.header.packetLength);
 }
 
 /**
  * 功能：从服务器swarm_ranging进程读取socekt_packet消息
  */
-// int sendToServer(int partyID, int rtxType, const void *payload, size_t payloadLength)
-ssize_t recvFromServer(int partyID)
+ssize_t recvPayloadFrom(int partyID, int *packetType, const void *payload, size_t payloadLength)
 {
 	Socket_Packet_t packet;
+	int payloadLen = -1;
 	ssize_t result = receive_packet(connect_list[partyID], &packet, sizeof(packet));
 	if (result > 0)
 	{
-		printf("Received packet, with length: %ld\n", result);
+		payloadLen = result - sizeof(packet.header);
+		*packetType = packet.header.type;
+		strncpy(payload, packet.payload, payloadLen);
+		printf("Received packet, with length: %ld, payloadLen=%d\n", result, payloadLen);
 	}
-	return result;
+	return payloadLen;
 }
 
 int main(int argc, char *argv[])
@@ -129,7 +167,8 @@ int main(int argc, char *argv[])
 	int party_id;
 	char rxtx_type[8];
 	long long timestamp;
-	int count_recv = 0;
+	uint8_t buffer[1024];
+
 	int isFailed = connectAllServer(); // control_center客户端连接所有的服务器
 	if (isFailed != 0)
 	{
@@ -138,9 +177,9 @@ int main(int argc, char *argv[])
 	}
 	printf("Connect to Servers success\n");
 
-	while(1)
+	while (1)
 	{
-		if (fscanf(fp, "%d\t%s\t%llx", &party_id, rxtx_type, &timestamp) == EOF) // 从配置文件之中读取一行数据
+		if (fscanf(fp, "%d\t%s\t0x%llx", &party_id, rxtx_type, &timestamp) == EOF) // 从配置文件之中读取一行数据
 			break;
 		assert(party_id >= 0);
 		assert(party_id < PROC_NUM);
@@ -161,9 +200,10 @@ int main(int argc, char *argv[])
 		// printf("after continue\n");
 		//  向服务器发送消息，主要是payload的部分
 		//  party_id对应src_addr,rxtx_type[0]传递的是ASCII值
-		if (sendToServer(party_id, rxtx_type[0], sizeof(timestamp), (char *)&timestamp) == 0)
+		int sent_len = sendPayloadTo(party_id, rxtx_type[0], &timestamp, sizeof(timestamp));
+		if (sent_len >= 0)
 		{
-			printf("Message sent to server %d\n", party_id);
+			printf("Message sent to server %d, with length.\n", party_id, sent_len);
 		}
 		else
 		{
@@ -171,15 +211,16 @@ int main(int argc, char *argv[])
 		}
 
 		// 一发送完就尝试从服务器接收消息
-		if (recvFromServer(party_id) > 0) // 这个函数的使用存在点疑惑
+		int packetType;
+		int recv_len = recvPayloadFrom(party_id, &packetType, buffer, sizeof(buffer));
+		if (recv_len > 0)
 		{
-			printf("Packet received from server %d\n", party_id);
+			printf("(Control): received from %d, message: \"%s\"\n", party_id, (char *)buffer);
 		}
 		else
 		{
 			printf("Failed to receive packet from server %d\n", party_id);
 		}
-		printf("\n");
 		break;
 	}
 

@@ -75,6 +75,7 @@ void receive_message(Connection conn)
 ssize_t send_packet(Connection conn, const void *packet, size_t packet_size)
 {
     ssize_t sent_size = send(conn.sockfd, packet, packet_size, 0);
+    printf("sent_size=%ld: send(conn.sockfd=%d, packet[0]=%d, packet_size=%ld, 0)\n", sent_size, conn.sockfd, *(int *)packet, packet_size);
     if (sent_size < 0)
     {
         perror("Send failed");
@@ -85,6 +86,7 @@ ssize_t send_packet(Connection conn, const void *packet, size_t packet_size)
 ssize_t receive_packet(Connection conn, const void *packet, size_t packet_size)
 {
     ssize_t recved_size = recv(conn.sockfd, packet, packet_size, 0);
+    printf("recved_size=%ld: recv(conn.sockfd=%d, packet[0]=%d, packet_size=%ld, 0)\n", recved_size, conn.sockfd, *(int *)packet, packet_size);
     if (recved_size < 0)
     {
         perror("Packet Receive failed");

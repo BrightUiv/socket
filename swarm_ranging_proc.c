@@ -157,7 +157,7 @@ void handle_client_data(int idx)
 	if (result >= 0)
 	{
 		// 成功接收到消息，打印消息内容
-		printf("(%d): received packet with length %d.\n", portnum, result);
+		printf("(%d) received: type=%d, timestamp=0x%llx.\n", portnum, packet.header.type, *(long long*)packet.payload);
 
 		// back message，在此处进行修改需要返回给control_center进程的测距消息
 		const char *responseMessage = "Message received successfully";
@@ -169,7 +169,7 @@ void handle_client_data(int idx)
 		strncpy(responsePacket.payload, responseMessage, strlen(responseMessage)); // 复制响应消息到payload
 
 		// send back一接收到Packet，立即send给control_center进程
-		send_packet(conn, &responsePacket, sizeof(responsePacket));
+		send_packet(conn, &responsePacket, responsePacket.header.packetLength);
 	}
 	else
 	{
