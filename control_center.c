@@ -221,7 +221,6 @@ int main(int argc, char *argv[])
 		{
 			printf("Failed to receive packet from server %d\n", party_id);
 		}
-		break;
 	}
 
 	printf("fclose\n");
