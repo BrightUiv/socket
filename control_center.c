@@ -87,41 +87,6 @@ void disconnectAllServer()
 
 /**
  * 功能：将control_center的消息，封装成一个socket_packet
-int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *payload)
-{
-	Socket_Packet_t packet;
-	memset(&packet, 0, sizeof(packet));
-	packet.header.packetLength = sizeof(Socket_Packet_Header_t) + payloadLength;
-	packet.header.type = rtxType; // todo use typedef enum to define meaningful type
-	// 将payload封装在packet中的payload发送过去
-	strncpy(packet.payload, payload, payloadLength);
-
-	return sendSocketPacket(connect_list[partyID].sockfd, &packet);
-}
- */
-
-/**
- * 功能：从服务器swarm_ranging进程读取socekt_packet消息
-int recvFromServer(int sockfd)
-{
-	Socket_Packet_t *packet = NULL;
-	int result = recvSocketPacket(sockfd, &packet);
-	if (result == 0 && packet != NULL)
-	{
-		// 成功接收到消息，处理消息...
-		printf("Received message: %s\n", packet->payload);
-		free(packet); // 记得释放分配的内存
-		return 0;
-	}
-	else
-	{
-		// 接收失败
-		return -1;
-	}
-}
-*/
-/**
- * 功能：将control_center的消息，封装成一个socket_packet
  */
 int sendPayloadTo(int partyID, int rtxType, const void *payload, size_t payloadLength)
 {
@@ -203,7 +168,7 @@ int main(int argc, char *argv[])
 		int sent_len = sendPayloadTo(party_id, rxtx_type[0], &timestamp, sizeof(timestamp));
 		if (sent_len >= 0)
 		{
-			printf("Message sent to server %d, with length.\n", party_id, sent_len);
+			printf("Message sent to server %d, with length %d.\n", party_id, sent_len);
 		}
 		else
 		{
