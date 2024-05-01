@@ -64,12 +64,16 @@ Connection connectToServer(int port)
  * 功能：control_center客户端，连接所有的服务器
  * 服务器：ip地址为127.0.0.1，端口号为for循环之中传入的参数
  */
-void connectAllServer()
+int connectAllServer()
 {
+	int isFailed = 0;
 	for (int i = 0; i < PROC_NUM; i++)
 	{
 		connect_list[i] = connectToServer(SERVER_PORT_START + i);
+		if (connect_list->sockfd < 0)
+			isFailed = 1;
 	}
+	return isFailed;
 }
 
 void disconnectAllServer()
@@ -84,7 +88,7 @@ void disconnectAllServer()
 /**
  * 功能：将control_center的消息，封装成一个socket_packet
  */
-int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *payload)
+int sendPayloadTo(int partyID, int rtxType, const void *payload, size_t payloadLength)
 {
 	Socket_Packet_t packet;
 	memset(&packet, 0, sizeof(packet));
@@ -93,28 +97,25 @@ int sendToServer(int partyID, int rtxType, size_t payloadLength, const char *pay
 	// 将payload封装在packet中的payload发送过去
 	strncpy(packet.payload, payload, payloadLength);
 
-	return sendSocketPacket(connect_list[partyID].sockfd, &packet);
+	return send_packet(connect_list[partyID], &packet, packet.header.packetLength);
 }
 
 /**
  * 功能：从服务器swarm_ranging进程读取socekt_packet消息
  */
-int recvFromServer(int sockfd)
+ssize_t recvPayloadFrom(int partyID, int *packetType, const void *payload, size_t payloadLength)
 {
-	Socket_Packet_t *packet = NULL;
-	int result = recvSocketPacket(sockfd, &packet);
-	if (result == 0 && packet != NULL)
+	Socket_Packet_t packet;
+	int payloadLen = -1;
+	ssize_t result = receive_packet(connect_list[partyID], &packet, sizeof(packet));
+	if (result > 0)
 	{
-		// 成功接收到消息，处理消息...
-		printf("Received message: %s\n", packet->payload);
-		free(packet); // 记得释放分配的内存
-		return 0;
+		payloadLen = result - sizeof(packet.header);
+		*packetType = packet.header.type;
+		strncpy(payload, packet.payload, payloadLen);
+		printf("Received packet, with length: %ld, payloadLen=%d\n", result, payloadLen);
 	}
-	else
-	{
-		// 接收失败
-		return -1;
-	}
+	return payloadLen;
 }
 
 int main(int argc, char *argv[])
@@ -122,17 +123,28 @@ int main(int argc, char *argv[])
 	FILE *fp;
 	printf("We have a totall of %d CF Proc.\n", PROC_NUM);
 	// 打开配置文件
-	fp = fopen("../process_data/simulate.conf", "r");
+	fp = fopen("simulate_active.conf", "r");
+	if (fp == NULL)
+	{
+		perror("Failed to open file");
+		return -1;
+	}
 	int party_id;
 	char rxtx_type[8];
 	long long timestamp;
-	int count_recv = 0;
-	char buffer[1024];
-	connectAllServer(); // control_center客户端连接所有的服务器
+	uint8_t buffer[1024];
+
+	int isFailed = connectAllServer(); // control_center客户端连接所有的服务器
+	if (isFailed != 0)
+	{
+		printf("Connect to Servers failed\n");
+		return -1;
+	}
+	printf("Connect to Servers success\n");
 
 	while (1)
 	{
-		if (fscanf(fp, "%d\t%s\t%llx", &party_id, rxtx_type, &timestamp) == EOF) // 从配置文件之中读取一行数据
+		if (fscanf(fp, "%d\t%s\t0x%llx", &party_id, rxtx_type, &timestamp) == EOF) // 从配置文件之中读取一行数据
 			break;
 		assert(party_id >= 0);
 		assert(party_id < PROC_NUM);
@@ -141,19 +153,22 @@ int main(int argc, char *argv[])
 		assert(rxtx_type[2] == 0);
 		assert(timestamp <= 0xffffffffff);
 		printf("----------------------\n");
-		printf("%d\t%s\t%llx", party_id, rxtx_type, timestamp);
+		printf("%d\t%s\t%llx\n", party_id, rxtx_type, timestamp);
 
 		/**
 		 * 解析simulate.conf文件的一行
 		 * 得到：{srcAddr---TX/RX---timestamp}---Packet
 		 *
 		 */
-
-		// 向服务器发送消息，主要是payload的部分
-		// party_id对应src_addr,rxtx_type[0]传递的是ASCII值
-		if (sendToServer(party_id, rxtx_type[0], sizeof(timestamp), (char *)&timestamp) == 0)
+		// printf("before continue\n");
+		// continue;
+		// printf("after continue\n");
+		//  向服务器发送消息，主要是payload的部分
+		//  party_id对应src_addr,rxtx_type[0]传递的是ASCII值
+		int sent_len = sendPayloadTo(party_id, rxtx_type[0], &timestamp, sizeof(timestamp));
+		if (sent_len >= 0)
 		{
-			printf("Message sent to server %d\n", party_id);
+			printf("Message sent to server %d, with length %d.\n", party_id, sent_len);
 		}
 		else
 		{
@@ -161,24 +176,21 @@ int main(int argc, char *argv[])
 		}
 
 		// 一发送完就尝试从服务器接收消息
-		if (recvFromServer(connect_list[party_id].sockfd) == 0) // 这个函数的使用存在点疑惑
+		int packetType;
+		int recv_len = recvPayloadFrom(party_id, &packetType, buffer, sizeof(buffer));
+		if (recv_len > 0)
 		{
-			printf("Message received from server %d\n", party_id);
+			printf("(Control): received from %d, message: \"%s\"\n", party_id, (char *)buffer);
 		}
 		else
 		{
-			printf("Failed to receive message from server %d\n", party_id);
+			printf("Failed to receive packet from server %d\n", party_id);
 		}
-		// 收到
-		for (int i = 0; i < count_recv; i++)
-		{
-			int value = getIntByIndex(buffer, i + 1, ",");
-			printf("fly_id is :%d  ", value);
-		}
-		printf("\n");
 	}
 
+	printf("fclose\n");
 	fclose(fp);
+	printf("disconnectAllServer\n");
 	disconnectAllServer();
 
 	return 0;

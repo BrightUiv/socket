@@ -22,11 +22,7 @@ typedef struct
 typedef struct
 {
     Socket_Packet_Header_t header;
-    char payload[2048];
+    char payload[1000];
 } Socket_Packet_t;
-
-int sendSocketPacket(int sockfd, Socket_Packet_t *packet);
-
-int recvSocketPacket(int sockfd, Socket_Packet_t **packet);
 
 #endif // MESSAGE_STRUCT

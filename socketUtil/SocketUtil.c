@@ -72,6 +72,28 @@ void receive_message(Connection conn)
     }
 }
 
+ssize_t send_packet(Connection conn, const void *packet, size_t packet_size)
+{
+    ssize_t sent_size = send(conn.sockfd, packet, packet_size, 0);
+    printf("sent_size=%ld: send(conn.sockfd=%d, packet[0]=%d, packet_size=%ld, 0)\n", sent_size, conn.sockfd, *(int *)packet, packet_size);
+    if (sent_size < 0)
+    {
+        perror("Send failed");
+    }
+    return sent_size;
+}
+
+ssize_t receive_packet(Connection conn, const void *packet, size_t packet_size)
+{
+    ssize_t recved_size = recv(conn.sockfd, packet, packet_size, 0);
+    printf("recved_size=%ld: recv(conn.sockfd=%d, packet[0]=%d, packet_size=%ld, 0)\n", recved_size, conn.sockfd, *(int *)packet, packet_size);
+    if (recved_size < 0)
+    {
+        perror("Packet Receive failed");
+    }
+    return recved_size;
+}
+
 int socket_send_payload(int sockfd, const void *payload, size_t dataLength)
 {
     if (send(sockfd, &dataLength, sizeof(dataLength), 0) == -1)
@@ -92,11 +114,11 @@ int socket_send_payload(int sockfd, const void *payload, size_t dataLength)
 /**
  * 功能：从特定的socket之中读取packet和size，control_center进程调用
  */
-int socket_receive_payload(int sockfd, void **packet, size_t *dataLength)
+int socket_receive_payload(int sockfd, void *packet, size_t *dataLength)
 {
     // recv packet length
     size_t size;
-    int n = recv(sockfd, &size, sizeof(size), 0); // 已连接套接字的文件描述符
+    int n = recv(sockfd, &size, sizeof(size), 0);
     if (n < 0)
     {
         perror("Failed to receive payload size");
@@ -104,26 +126,17 @@ int socket_receive_payload(int sockfd, void **packet, size_t *dataLength)
     }
     else if (n == 0)
     {
-        printf("recv end\n");
-        return -1;
-    }
-
-    // malloc memory to recv data
-    *packet = malloc(size);
-    if (*packet == NULL)
-    {
-        perror("Failed to allocate memory for payload");
+        printf("recv end");
         return -1;
     }
 
     // recv data
-    if (recv(sockfd, *packet, size, 0) <= 0)
+    if (recv(sockfd, packet, size, 0) <= 0)
     {
         perror("Failed to receive payload data");
-        free(*packet);
         return -1;
     }
 
     *dataLength = size;
     return 0;
-}   
+}

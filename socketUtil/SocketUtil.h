@@ -33,8 +33,12 @@ void send_message(Connection conn, char *message);
 
 void receive_message(Connection conn);
 
+ssize_t send_packet(Connection conn, const void *packet, size_t packet_size);
+
+ssize_t receive_packet(Connection conn, const void *packet, size_t packet_size);
+
 int socket_send_payload(int sockfd, const void *payload, size_t payload_size);
 
-int socket_receive_payload(int sockfd, void **payload, size_t *payload_size);
+int socket_receive_payload(int sockfd, void *packet, size_t *dataLength);
 
 #endif

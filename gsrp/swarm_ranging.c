@@ -43,6 +43,7 @@ static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int rangingSeqNumber = 1;
 static uint32_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
+
 static Ranging_Table_t EMPTY_RANGING_TABLE = {
     .neighborAddress = UWB_DEST_EMPTY,
     .Rp.timestamp.full = 0,

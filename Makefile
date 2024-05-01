@@ -2,7 +2,7 @@ CC=gcc
 PROC_NUM=3
 
 # Define compile-time flags
-CFLAGS=-Wall -DPROC_NUM=$(PROC_NUM)
+CFLAGS=-Wall -DPROC_NUM=$(PROC_NUM) -Igsrp -Igsrp/libdw3000 -I/usr/local/apr/include/apr-1 -L/usr/local/apr/lib -lapr-1 -laprutil-1 -lpthread
 
 # Define the target executable
 TARGET_SERVER=swarm_ranging_proc
@@ -18,7 +18,7 @@ $(shell mkdir -p $(OBJDIR))
 all: $(TARGET_SERVER) $(TARGET_CLIENT)
 
 # Link the object file to create the executable
-$(TARGET_SERVER): $(OBJDIR)/swarm_ranging_proc.o $(OBJDIR)/socket_util.o $(OBJDIR)/message_struct.o
+$(TARGET_SERVER): $(OBJDIR)/swarm_ranging_proc.o $(OBJDIR)/socket_util.o 
 	$(CC) $(CFLAGS) $^ -o $@
 
 # Compile the source file into an object file
@@ -26,15 +26,11 @@ $(OBJDIR)/swarm_ranging_proc.o: swarm_ranging_proc.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Link the object file to create the executable
-$(TARGET_CLIENT): $(OBJDIR)/control_center.o $(OBJDIR)/socket_util.o $(OBJDIR)/message_struct.o
+$(TARGET_CLIENT): $(OBJDIR)/control_center.o $(OBJDIR)/socket_util.o
 	$(CC) $(CFLAGS) $^ -o $@
 
 # Compile the socket_util
 $(OBJDIR)/socket_util.o: socketUtil/SocketUtil.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Compile the message_struct
-$(OBJDIR)/message_struct.o: message_struct.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Compile the source file into an object file

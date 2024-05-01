@@ -9,15 +9,17 @@
 #include <sys/types.h>
 #include <time.h>
 #include <signal.h>
-#include "message_struct.h"
 #include <poll.h>
+#include "message_struct.h"
+#include "task_queue_system.h"
+
+#define TIMEOUT -1	   // Poll wait forever
+#define MAX_CLIENTS 20 // 客户端：swarm_ranging进程最大数量
 
 volatile sig_atomic_t stop; // process ctrl+c
 int listenfd = -1;
 int portnum = -1;
-
-#define TIMEOUT -1	   // Poll wait forever
-#define MAX_CLIENTS 20 // 客户端：swarm_ranging进程最大数量
+SemaphoreHandle_t readyToGenerateAndSend;
 
 typedef struct
 {
@@ -151,14 +153,15 @@ int init_server_socket(int port) // port为绑定的端口号
  */
 void handle_client_data(int idx)
 {
-	int connfd = manager.fds[idx].fd;
-	Socket_Packet_t *packet = NULL;
-	int result = recvSocketPacket(connfd, &packet); // connf表示申请通信的客户端
-	if (result >= 0 && packet != NULL)
+	Connection conn = {.sockfd = manager.fds[idx].fd};
+	Socket_Packet_t packet;
+	ssize_t result = receive_packet(conn, &packet, sizeof(packet)); // connf表示申请通信的客户端
+	if (result >= 0)
 	{
 		// TODO: 调用rxCallback()
-		//  成功接收到消息，打印消息内容
-		printf("ID %d received message.\n", portnum);
+		// 成功接收到消息，打印消息内容
+		printf("(%d) received: type=%d, timestamp=0x%llx.\n", portnum, packet.header.type, *(long long *)packet.payload);
+		xSemaphoreGive(readyToGenerateAndSend, portMAX_DELAY);
 
 		// case 1:如果control_center要求发报文，完后才能如下步骤：
 		// 0.保存tx_timestamp到临时变量
@@ -180,12 +183,10 @@ void handle_client_data(int idx)
 		memset(&responsePacket, 0, sizeof(responsePacket)); // 初始化responsePacket
 
 		responsePacket.header.packetLength = sizeof(Socket_Packet_Header_t) + strlen(responseMessage);
-		strncpy(responsePacket.payload, responseMessage, sizeof(responsePacket.payload) - 1); // 复制响应消息到payload
+		strncpy(responsePacket.payload, responseMessage, strlen(responseMessage)); // 复制响应消息到payload
 
 		// send back一接收到Packet，立即send给control_center进程
-		sendSocketPacket(connfd, &responsePacket);
-		// free
-		free(packet);
+		send_packet(conn, &responsePacket, responsePacket.header.packetLength);
 	}
 	else
 	{
