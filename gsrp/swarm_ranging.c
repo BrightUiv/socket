@@ -16,7 +16,7 @@
 #include "static_mem.h"
 */
 #include "swarm_ranging.h"
-
+// #include"task_queue_system.h"//循环编译
 #ifndef RANGING_DEBUG_ENABLE
 #undef DEBUG_PRINT
 #define DEBUG_PRINT
@@ -25,18 +25,14 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-//--------------------------------------------------------------------------------------------------------------------------
-// static TimerHandle_t neighborSetEvictionTimer;修改
-Neighbor_Set_t neighborSet;
-TimerHandle_t rangingTableSetEvictionTimer;
-SemaphoreHandle_t TfBufferMutex;
-// static TaskHandle_t uwbRangingTxTaskHandle = 0;
-// static TaskHandle_t uwbRangingRxTaskHandle = 0;
-//--------------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------
+static Neighbor_Set_t neighborSet;
+static TimerHandle_t rangingTableSetEvictionTimer;
+static SemaphoreHandle_t TfBufferMutex;
+//---------------------------------------------------------------------------------------------------------
 static uint16_t MY_UWB_ADDRESS;
 
 static QueueHandle_t rxQueue;
-Neighbor_Set_t neighborSet;
 // static Neighbor_Set_t neighborSet;
 Ranging_Table_Set_t rangingTableSet;
 // static TimerHandle_t rangingTableSetEvictionTimer;
@@ -1415,7 +1411,7 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage)
 
   return taskDelay;
 }
-
+// 创建一个线程
 static void uwbRangingTxTask(void *parameters)
 {
   //  systemWaitStart();
@@ -1434,12 +1430,14 @@ static void uwbRangingTxTask(void *parameters)
 
   while (true)
   {
+    // TODO:xSemaphoreTake(readyToReceive)
     xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
     xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
     Time_t taskDelay = generateRangingMessage(rangingMessage);
+    taskDelay = 0;
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
-    uwbSendPacketBlock(&txPacketCache);
+    // uwbSendPacketBlock(&txPacketCache); // TODO: 需要写成socket通信的形式、send()socket
     //    printRangingTableSet(&rangingTableSet);
     //    printNeighborSet(&neighborSet);
 
@@ -1448,7 +1446,7 @@ static void uwbRangingTxTask(void *parameters)
     vTaskDelay(taskDelay);
   }
 }
-
+// 线程
 static void uwbRangingRxTask(void *parameters)
 {
   //  systemWaitStart();
@@ -1471,60 +1469,62 @@ static void uwbRangingRxTask(void *parameters)
     vTaskDelay(M2T(1));
   }
 }
+// 2024-4-30使用方法：直接调用函数
 void rangingRxCallback(void *parameters)
 {
   // DEBUG_PRINT("rangingRxCallback \n");
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;//
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters; // 涉及到回放仿真配置文件的处理内容
 
   dwTime_t rxTime;
-  //   dwt_readrxtimestamp((uint8_t *)&rxTime.raw); todo
+  dwt_readrxtimestamp((uint8_t *)&rxTime.raw); // TODO:功能待实现
+
   Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
-  //   rxMessageWithTimestamp.rxTime = rxTime; //todo
+  rxMessageWithTimestamp.rxTime = rxTime;
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
   rxMessageWithTimestamp.rangingMessage = *rangingMessage;
 
   xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
 }
-
+// 2024-4-30 使用方法：直接调用函数，发送完调用，给了信号量调用
 void rangingTxCallback(void *parameters)
 {
   UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
 
   dwTime_t txTime;
-  //   dwt_readtxtimestamp((uint8_t *)&txTime.raw);//todo
+  dwt_readtxtimestamp((uint8_t *)&txTime.raw); // TODO:功能待实现
 
   Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
   updateTfBuffer(timestamp);
 }
 
-void rangingInit()
+int main()
 {
-  MY_UWB_ADDRESS = uwbGetAddress();
-  rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
-  neighborSetInit(&neighborSet);
+  MY_UWB_ADDRESS = uwbGetAddress();                                          // TODO:
+  rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE); // finished
+  neighborSetInit(&neighborSet);                                             // no need to change
 
-  neighborSetEvictionTimer = xTimerCreate();
+  neighborSetEvictionTimer = xTimerCreate(); // finished
   int expiration_time1 = 5;
   int repetition1 = 2;
-  xTimerStart(neighborSetEvictionTimer, expiration_time1, repetition1);
-  rangingTableSetInit(&rangingTableSet);
+  xTimerStart(neighborSetEvictionTimer, expiration_time1, repetition1, NULL); // finished
+  rangingTableSetInit(&rangingTableSet);                                      // no need to change
 
-  rangingTableSetEvictionTimer = xTimerCreate();
+  rangingTableSetEvictionTimer = xTimerCreate(); // finished
   int expiration_time2 = 6;
   int repetition2 = 3;
-  xTimerStart(rangingTableSetEvictionTimer, expiration_time2, repetition2);
+  xTimerStart(rangingTableSetEvictionTimer, expiration_time2, repetition2, NULL); // finished
 
-  TfBufferMutex = xSemaphoreCreateMutex();
+  TfBufferMutex = xSemaphoreCreateMutex(); // finished
 
-  listener.type = UWB_RANGING_MESSAGE;
-  listener.rxQueue = NULL;           // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
-  listener.rxCb = rangingRxCallback; // TODO
-  listener.txCb = rangingTxCallback; // TODO
-  uwbRegisterListener(&listener);
+  // listener.type = UWB_RANGING_MESSAGE;
+  // listener.rxQueue = NULL;           // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
+  // listener.rxCb = rangingRxCallback; // TODO
+  // listener.txCb = rangingTxCallback; // TODO
+  // // uwbRegisterListener(&listener);    // 保持一致,暂时不删除，但是不会使用
 
   idVelocityX = 0;
   idVelocityY = 0;
@@ -1534,6 +1534,7 @@ void rangingInit()
   xTaskCreate(uwbRangingTxTask);
   xTaskCreate(uwbRangingRxTask);
 
+  printf("succeed to run!\n");
   return 0;
 }
 

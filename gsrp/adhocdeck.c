@@ -9,6 +9,13 @@
 
 #define DEFAULT_RX_TIMEOUT 0xFFFFF
 
+//----------------------------------------------------------------------------------------------------------------------
+/* uint16_t uwbGetAddress()
+{
+	return MY_UWB_ADDRESS;
+} */
+//----------------------------------------------------------------------------------------------------------------------
+
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit = false;
 static SemaphoreHandle_t irqSemaphore;
@@ -18,11 +25,6 @@ static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
 
 /* rx buffer used in rx_callback */
 static uint8_t rxBuffer[UWB_FRAME_LEN_MAX];
-
-uint16_t uwbGetAddress()
-{
-	return MY_UWB_ADDRESS;
-}
 
 int uwbSendPacket(UWB_Packet_t *packet)
 {

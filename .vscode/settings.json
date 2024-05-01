@@ -27,6 +27,13 @@
             " * @return $3",
             " */"
         ],
-        "description": "Document a C function."
+        "description": "Document a C function.",
+        "C_Cpp.navigate.reference.preferredLocation": "editor.action.revealDefinition"
+    },
+    "C_Cpp.navigate.reference.preferredLocation": "editor.action.revealDefinition",
+    "files.associations": {
+        "assert.h": "c",
+        "types.h": "c",
+        "time.h": "c"
     }
 }

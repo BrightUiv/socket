@@ -156,10 +156,24 @@ void handle_client_data(int idx)
 	int result = recvSocketPacket(connfd, &packet); // connf表示申请通信的客户端
 	if (result >= 0 && packet != NULL)
 	{
-		// 成功接收到消息，打印消息内容
+		// TODO: 调用rxCallback()
+		//  成功接收到消息，打印消息内容
 		printf("ID %d received message.\n", portnum);
 
-		// back message，在此处进行修改需要返回给control_center进程的测距消息
+		// case 1:如果control_center要求发报文，完后才能如下步骤：
+		// 0.保存tx_timestamp到临时变量
+		// 1.xSemaphoreGive()
+		// 	1.1.重写uwbSendBlock()函数，直接通过socket发送，最近版本
+		// 2. Delay(1ms)函数
+		// 3.调用TxCallback()函数
+		//	3.1重写dwt_read_tx_timestamp()函数
+
+		// case 2:如果control_center要求接收报文
+		// 0. 保存rx_timestamp到临时变量
+		// 1. 接受rangingMessage到临时变量
+		// 2. 调用rxCallback()函数处理消息
+
+		//  back message，在此处进行修改需要返回给control_center进程的测距消息
 		const char *responseMessage = "Message received successfully";
 
 		Socket_Packet_t responsePacket;
@@ -255,6 +269,7 @@ int main(int argc, char *argv[]) // argc表示参数的数量，argv记录对应
 	printf("The proc name: %s\nThe port num: %d\n", procname, portnum);
 
 	initClientManager(&manager); // 初始化pollfd[]数组
+	// initRangingInit();//开了两个线程TX,RX
 
 	setup_signal_handler(); // ctrl+c实现关闭所有套接字的连接
 

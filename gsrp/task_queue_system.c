@@ -1,18 +1,21 @@
 #include "task_queue_system.h"
 #include <stdlib.h>
 #include <stdio.h>
-
 apr_pool_t *pool;
 
 //-----------------------------------------------------------------------------------------------------------------
 
-// 休眠对应的秒数
+/**
+ * 功能：设置休眠的秒数
+ */
 void vTaskDelay(const TickType_t xTicksToDelay)
 {
   usleep(1000000 * (xTicksToDelay));
 }
 
-// 获取当前系统对应的时间，返回的是秒数
+/**
+ * 功能：获取当前系统对应的时间，返回的是秒数
+ */
 TickType_t xTaskGetTickCount()
 {
   struct timespec ts;
@@ -30,8 +33,9 @@ TickType_t xTaskGetTickCount()
 }
 
 /**
-    Queue队列为一个指针队列，里面存放的都是指针类型的数据
-*/
+ * 功能：Queue队列为一个指针队列，里面存放的都是指针类型的数据
+ *
+ */
 QueueHandle_t xQueueCreate(const uint32_t uxQueueLength,
                            const uint32_t uxItemSize)
 { // uxItemSize每个数据类型的长度
@@ -51,7 +55,9 @@ QueueHandle_t xQueueCreate(const uint32_t uxQueueLength,
   return queue;
 }
 
-// 销毁进程对应的内存池，直接释放内存池中的所有空间
+/**
+ * 功能：销毁进程对应的内存池，直接释放内存池中的所有空间
+ */
 void xQueueDestroy(apr_pool_t *pool)
 {
 
@@ -59,7 +65,9 @@ void xQueueDestroy(apr_pool_t *pool)
   apr_terminate();
 }
 
-// 实现往apr_queue_t队列之中插入一个指针--实现
+/**
+ * 功能：实现往apr_queue_t队列之中插入一个指针
+ */
 BaseType_t xQueueSendFromISR(
     QueueHandle_t xQueue,
     const void *const pvItemToQueue, // 存放的是一级指针
@@ -68,7 +76,9 @@ BaseType_t xQueueSendFromISR(
   return xQueueSend(xQueue, pvItemToQueue, pxHigherPriorityTaskWoken);
 }
 
-// 实现往apr_queue_t队列之中插入一个指针--实现
+/**
+ * 功能：实现往apr_queue_t队列之中插入一个指针
+ */
 BaseType_t xQueueSend(
     QueueHandle_t xQueue,
     const void *const pvItemToQueue, // 存放的是一级指针
@@ -76,12 +86,8 @@ BaseType_t xQueueSend(
 {
   unsigned int item_size = apr_queue_item_size(xQueue);
 
-  // 存入指向Ranging_Message_With_Timestamp_t类型的指针
-  //  Ranging_Message_With_Timestamp_t* ptr=(Ranging_Message_With_Timestamp_t*)malloc(sizeof(Ranging_Message_With_Timestamp_t));
-
   void *ptr = malloc(item_size);
 
-  // memcpy(ptr,pvItemToQueue,sizeof(Ranging_Message_With_Timestamp_t));
   memcpy(ptr, pvItemToQueue, item_size);
 
   apr_queue_push(xQueue, ptr);
@@ -94,13 +100,10 @@ BaseType_t xQueueReceive(QueueHandle_t xQueue,
                          TickType_t xTicksToWait)
 {
   // 实现free()函数的机制
-  //  Ranging_Message_With_Timestamp_t* ptr;
   void *ptr;
   apr_queue_pop(xQueue, (void **)&ptr); // 传出的是元素地址（指针）的地址
 
   // 获取的ptr，可以*ptr找到对应的测距消息
-  //  Ranging_Message_With_Timestamp_t* buffer = (Ranging_Message_With_Timestamp_t*)pvBuffer;
-  //  *buffer = *ptr;
 
   unsigned int item_size = apr_queue_item_size(xQueue);
 
@@ -112,59 +115,129 @@ BaseType_t xQueueReceive(QueueHandle_t xQueue,
   return 1;
 }
 
-// 传出一个互斥锁数据类型
+/**
+ * 功能：创建一个互斥锁
+ */
 SemaphoreHandle_t xSemaphoreCreateMutex()
 {
-  pthread_mutex_t mutex;
-  pthread_mutex_init(&mutex, NULL); // 使用默认属性初始化互斥锁
-  return mutex;
+
+  pthread_mutex_t *mutex = malloc(sizeof(pthread_mutex_t)); // 在堆上分配内存
+  if (mutex == NULL)
+  {
+    perror("Failed to allocate memory for mutex");
+    return NULL; // 如果内存分配失败，返回NULL
+  }
+  if (pthread_mutex_init(mutex, NULL) != 0)
+  {
+    free(mutex); // 如果初始化失败，释放内存并返回NULL
+    perror("fail to init mutex!\n");
+    return NULL;
+  }
+  return mutex; // 返回新创建的互斥锁的指针
+}
+/**
+ * 功能：实现加上互斥锁
+ */
+int xSemaphoreTake(SemaphoreHandle_t TfBufferMutex, TickType_t xTicksToWait)
+{
+  pthread_mutex_lock(TfBufferMutex);
 }
 
-// 传入一个互斥锁的类型
+/**
+ * 功能：互斥锁的释放
+ */
+int xSemaphoreGive(SemaphoreHandle_t TfBufferMutex)
+{
+  pthread_mutex_unlock(TfBufferMutex);
+}
+/**
+ * 功能：销毁一个互斥锁
+ */
 void xSemaphoreDestroyMutex(SemaphoreHandle_t mutex)
 {
-  pthread_mutex_destroy(&mutex);
+  if (mutex != NULL)
+  {
+    pthread_mutex_destroy(mutex); // 销毁互斥锁
+    free(mutex);                  // 释放互斥锁所占用的内存
+  }
+  else
+  {
+    perror("mutex is NULL ,fail to free !\n");
+  }
 }
 
+/**
+ * 功能：定时器到期之后，执行的操作
+ */
 void alarm_handler(int sig)
 {
-    printf("Timer expired可以替换\n");
+  printf("Timer expired可以替换\n");
 }
 
-struct itimerval xTimerCreate()
+/**
+ * 功能：创建一个定时器
+ */
+TimerHandle_t xTimerCreate()
 {
-    struct itimerval timer;
-    return timer;
+  TimerHandle_t timer;
+  return timer;
 }
 
-int xTimerStart(struct itimerval timer, int expire_time, int repetition, void *func)
+/**
+ * 功能：设置一个定时器，当定时器超时时，它将触发一个信号
+ */
+long xTimerStart(TimerHandle_t timer, int expire_time, int repetition, void *func)
 {
-    // struct itimerval timer=xTimerCreate();
-    struct sigaction sa;
+  // struct itimerval timer=xTimerCreate();
+  struct sigaction sa;
 
-    // 清空并设置信号处理函数
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = func;
-    sigaction(SIGALRM, &sa, NULL);
+  // 清空并设置信号处理函数
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = func;
+  sigaction(SIGALRM, &sa, NULL);
 
-    // 设置定时器的时间间隔
-    timer.it_value.tv_sec = expire_time; // 定时器首次超时时间
-    timer.it_value.tv_usec = 0;
-    timer.it_interval.tv_sec = repetition; // 定时器周期性超时时间，设置为0表示单次定时器
-    timer.it_interval.tv_usec = 0;
+  // 设置定时器的时间间隔
+  timer.it_value.tv_sec = expire_time; // 定时器首次超时时间
+  timer.it_value.tv_usec = 0;
+  timer.it_interval.tv_sec = repetition; // 定时器周期性超时时间，设置为0表示单次定时器
+  timer.it_interval.tv_usec = 0;
 
-    return setitimer(ITIMER_REAL, &timer, NULL);
+  return setitimer(ITIMER_REAL, &timer, NULL);
 }
 
-// 实现创建一个线程，同时在一个进程之中join()等待线程的结束
+/**
+ * 功能：实现创建一个线程，同时在一个进程之中join()等待线程的结束
+ */
 long xTaskCreate(void *task_funcion)
 {
   pthread_t th;
   pthread_create(&th, NULL, task_funcion, NULL);
   pthread_join(th, NULL);
+  return 1;
 }
-
+/**
+ * 功能：获得16位的地址 TODO:需要重新修改下
+ *
+ */
 uint16_t uwbGetAddress()
 {
   return MY_UWB_ADDRESS;
+}
+
+/**
+ * 功能：实现从消息之中读取timestamp
+ * TODO: 需要实现下功能
+ */
+void dwt_readrxtimestamp(uint8_t *timestamp)
+{
+  printf("read rx_timestamp\n");
+}
+
+/**
+ * 功能：实现从socket通信的测距消息之中读取tx_timestamp
+ * TODO:功能待实现
+ */
+void dwt_readtxtimestamp(uint8_t *timestamp)
+{
+  printf("read tx_timestamp\n");
 }
