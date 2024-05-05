@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall
+CFLAGS=-Wall -g
 
 task_queue_system:task_queue_system.o swarm_ranging.o 
 	$(CC) $(CFLAGS) -o task_queue_system task_queue_system.o swarm_ranging.o -L/usr/local/apr/lib -lapr-1 -laprutil-1 -lpthread -lm -lrt

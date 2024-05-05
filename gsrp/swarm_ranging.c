@@ -1412,7 +1412,9 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage)
 
   return taskDelay;
 }
-// 创建一个线程
+/**
+ * 功能：Task函数是开线程
+ */
 static void uwbRangingTxTask(void *parameters)
 {
   //  systemWaitStart();
@@ -1431,19 +1433,22 @@ static void uwbRangingTxTask(void *parameters)
 
   while (true)
   {
-    // TODO:xSemaphoreTake(readyToReceive)
+    xSemaphoreTake(readyToSend, portMAX_DELAY); // TODO: control_center释放的互斥变量
     xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
     xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
     Time_t taskDelay = generateRangingMessage(rangingMessage);
     taskDelay = 0;
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
-    // uwbSendPacketBlock(&txPacketCache); // TODO: 需要写成socket通信的形式、send()socket
+    uwbSendPacketBlock(&txPacketCache); // TODO: socket通信，发送给control_center进程
     //    printRangingTableSet(&rangingTableSet);
     //    printNeighborSet(&neighborSet);
 
     xSemaphoreGive(neighborSet.mu);
     xSemaphoreGive(rangingTableSet.mu);
+    xSemaphoreGive(readyToSend); // TODO:释放互斥变量
+
+    rangingTxCallback(txPacketCache); // TX线程调用TxCallback()函数，updateTfBuffer数组
     vTaskDelay(taskDelay);
   }
 }
@@ -1471,6 +1476,9 @@ static void uwbRangingRxTask(void *parameters)
   }
 }
 // 2024-4-30使用方法：直接调用函数
+/**
+ * TODO:需要增加功能：从socket通信之中读取message，存放进apr-queue队列之中
+ */
 void rangingRxCallback(void *parameters)
 {
   // DEBUG_PRINT("rangingRxCallback \n");
@@ -1502,7 +1510,7 @@ void rangingTxCallback(void *parameters)
   updateTfBuffer(timestamp);
 }
 
-int main()
+void rangingInit()
 {
   MY_UWB_ADDRESS = uwbGetAddress();                                          // TODO:
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE); // finished
@@ -1520,7 +1528,7 @@ int main()
   xTimerStart(rangingTableSetEvictionTimer, expiration_time2, repetition2, NULL); // finished
 
   TfBufferMutex = xSemaphoreCreateMutex(); // finished
-
+  // printf();
   // listener.type = UWB_RANGING_MESSAGE;
   // listener.rxQueue = NULL;           // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
   // listener.rxCb = rangingRxCallback; // TODO
