@@ -161,7 +161,7 @@ void handle_client_data(int idx)
 		// TODO: 调用rxCallback()
 		// 成功接收到消息，打印消息内容
 		printf("(%d) received: type=%d, timestamp=0x%llx.\n", portnum, packet.header.type, *(long long *)packet.payload);
-		xSemaphoreGive(readyToGenerateAndSend, portMAX_DELAY);
+		// xSemaphoreGive(readyToGenerateAndSend, portMAX_DELAY);
 
 		// case 1:如果control_center要求发报文，完后才能如下步骤：
 		// 0.保存tx_timestamp到临时变量
