@@ -276,7 +276,7 @@ int main(int argc, char *argv[]) // argc表示参数的数量，argv记录对应
 
 	listenfd = init_server_socket(50627 + portnum); // 设置一个服务器进程swarm_ranging监听所有客户端程序的套接字listenfd
 
-	run_poll_loop(&manager); // 对于swarm_ranging维护的数据结构进行检查
+	run_poll_loop(); // 对于swarm_ranging维护的数据结构进行检查
 
 	close(listenfd); // 依据文件描述符，socket连接
 }
