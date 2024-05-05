@@ -1515,20 +1515,20 @@ void rangingTxCallback(void *parameters)
 void rangingInit()
 // int main()
 {
-  MY_UWB_ADDRESS = uwbGetAddress();                                          // TODO:
+  // MY_UWB_ADDRESS = uwbGetAddress();                                          // TODO:
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE); // finished
   neighborSetInit(&neighborSet);                                             // no need to change
 
-  neighborSetEvictionTimer = xTimerCreate(); // finished
-  int expiration_time1 = 5;
-  int repetition1 = 2;
-  xTimerStart(neighborSetEvictionTimer, expiration_time1, repetition1, NULL); // finished
-  rangingTableSetInit(&rangingTableSet);                                      // no need to change
+  // neighborSetEvictionTimer = xTimerCreate(); // finished
+  // int expiration_time1 = 0;
+  // int repetition1 = 2;
+  // xTimerStart(neighborSetEvictionTimer, expiration_time1, repetition1, NULL); // finished
+  rangingTableSetInit(&rangingTableSet); // no need to change
 
-  rangingTableSetEvictionTimer = xTimerCreate(); // finished
-  int expiration_time2 = 6;
-  int repetition2 = 3;
-  xTimerStart(rangingTableSetEvictionTimer, expiration_time2, repetition2, NULL); // finished
+  // rangingTableSetEvictionTimer = xTimerCreate(); // finished
+  // int expiration_time2 = 0;
+  // int repetition2 = 3;
+  // xTimerStart(rangingTableSetEvictionTimer, expiration_time2, repetition2, NULL); // finished
 
   TfBufferMutex = xSemaphoreCreateMutex(); // finished
   // printf();
@@ -1542,12 +1542,12 @@ void rangingInit()
   idVelocityY = 0;
   idVelocityZ = 0;
 
+  readyToSend = xSemaphoreCreateMutex();
+  xSemaphoreTake(readyToSend, portMAX_DELAY);
+
   // 一个swarmRanging进程之中有两个线程，Tx线程和Rx线程
   xTaskCreate(uwbRangingTxTask);
   xTaskCreate(uwbRangingRxTask);
-
-  readyToSend = xSemaphoreCreateMutex();
-  xSemaphoreTake(readyToSend, portMAX_DELAY);
 
   printf("succeed to run!\n");
 }
