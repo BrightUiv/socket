@@ -264,11 +264,6 @@ void printRangingMessage(Ranging_Message_t *rangingMessage);
 void printNeighborBitSet(Neighbor_Bit_Set_t *bitSet);
 void printNeighborSet(Neighbor_Set_t *set);
 
-//----------------------------------------------------------------------------------------------------------------------
-// extern Ranging_Table_Set_t rangingTableSet;
-// extern SemaphoreHandle_t TfBufferMutex;
-// extern Neighbor_Set_t neighborSet;
-// extern TimerHandle_t rangingTableSetEvictionTimer;
-//---------------------------------------------------------------------------------------------------------------------
+void rangingInit();
 
 #endif

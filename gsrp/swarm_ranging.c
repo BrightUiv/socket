@@ -43,6 +43,7 @@ static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int rangingSeqNumber = 1;
 static uint32_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
+extern SemaphoreHandle_t readyToSend;
 
 static Ranging_Table_t EMPTY_RANGING_TABLE = {
     .neighborAddress = UWB_DEST_EMPTY,
@@ -1433,11 +1434,12 @@ static void uwbRangingTxTask(void *parameters)
 
   while (true)
   {
-    // xSemaphoreTake(readyToSend, portMAX_DELAY); // TODO: control_center释放的互斥变量
+    xSemaphoreTake(readyToSend, portMAX_DELAY); // TODO: control_center释放的互斥变量
     xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
     xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
     Time_t taskDelay = generateRangingMessage(rangingMessage);
+    printf("Returned generateRangingMessage(rangingMessage)\n");
     taskDelay = 0;
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
     // uwbSendPacketBlock(&txPacketCache); // TODO: socket通信，发送给control_center进程
@@ -1510,8 +1512,8 @@ void rangingTxCallback(void *parameters)
   updateTfBuffer(timestamp);
 }
 
-// void rangingInit()
-int main()
+void rangingInit()
+// int main()
 {
   MY_UWB_ADDRESS = uwbGetAddress();                                          // TODO:
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE); // finished
@@ -1544,8 +1546,10 @@ int main()
   xTaskCreate(uwbRangingTxTask);
   xTaskCreate(uwbRangingRxTask);
 
+  readyToSend = xSemaphoreCreateMutex();
+  xSemaphoreTake(readyToSend, portMAX_DELAY);
+
   printf("succeed to run!\n");
-  return 0;
 }
 
 /*
