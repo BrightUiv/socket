@@ -213,7 +213,7 @@ long xTaskCreate(void *task_funcion)
   pthread_t th;
   pthread_create(&th, NULL, task_funcion, NULL);
   printf("task_function succeed to run!\n");
-  pthread_join(th, NULL);
+  // pthread_join(th, NULL);
 
   return 1;
 }

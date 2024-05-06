@@ -12,6 +12,7 @@
 #include <poll.h>
 #include "message_struct.h"
 #include "task_queue_system.h"
+#include "swarm_ranging.h"
 
 #define TIMEOUT -1	   // Poll wait forever
 #define MAX_CLIENTS 20 // 客户端：swarm_ranging进程最大数量
@@ -19,7 +20,6 @@
 volatile sig_atomic_t stop; // process ctrl+c
 int listenfd = -1;
 int portnum = -1;
-SemaphoreHandle_t readyToGenerateAndSend;
 
 typedef struct
 {
@@ -161,7 +161,10 @@ void handle_client_data(int idx)
 		// TODO: 调用rxCallback()
 		// 成功接收到消息，打印消息内容
 		printf("(%d) received: type=%d, timestamp=0x%llx.\n", portnum, packet.header.type, *(long long *)packet.payload);
-		// xSemaphoreGive(readyToGenerateAndSend, portMAX_DELAY);
+		if (packet.header.type == 'T')
+		{
+			xSemaphoreGive(readyToSend);
+		}
 
 		// case 1:如果control_center要求发报文，完后才能如下步骤：
 		// 0.保存tx_timestamp到临时变量
@@ -270,13 +273,14 @@ int main(int argc, char *argv[]) // argc表示参数的数量，argv记录对应
 	printf("The proc name: %s\nThe port num: %d\n", procname, portnum);
 
 	initClientManager(&manager); // 初始化pollfd[]数组
-	// initRangingInit();//开了两个线程TX,RX
+	rangingInit();				 // 开了两个线程TX,RX
 
 	setup_signal_handler(); // ctrl+c实现关闭所有套接字的连接
 
+	printf("to exec init_server_socket(50627 + portnum);\n");
 	listenfd = init_server_socket(50627 + portnum); // 设置一个服务器进程swarm_ranging监听所有客户端程序的套接字listenfd
 
-	run_poll_loop(&manager); // 对于swarm_ranging维护的数据结构进行检查
+	run_poll_loop(); // 对于swarm_ranging维护的数据结构进行检查
 
 	close(listenfd); // 依据文件描述符，socket连接
 }

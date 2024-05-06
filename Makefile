@@ -11,6 +11,7 @@ TARGET_CLIENT=control_center
 # Output directory for object files
 OBJDIR = build
 
+
 # Ensure the OBJDIR exists
 $(shell mkdir -p $(OBJDIR))
 
@@ -18,7 +19,7 @@ $(shell mkdir -p $(OBJDIR))
 all: $(TARGET_SERVER) $(TARGET_CLIENT)
 
 # Link the object file to create the executable
-$(TARGET_SERVER): $(OBJDIR)/swarm_ranging_proc.o $(OBJDIR)/socket_util.o 
+$(TARGET_SERVER): $(OBJDIR)/swarm_ranging_proc.o $(OBJDIR)/socket_util.o $(OBJDIR)/swarm_ranging.o  $(OBJDIR)/task_queue_system.o  
 	$(CC) $(CFLAGS) $^ -o $@
 
 # Compile the source file into an object file
@@ -33,9 +34,14 @@ $(TARGET_CLIENT): $(OBJDIR)/control_center.o $(OBJDIR)/socket_util.o
 $(OBJDIR)/socket_util.o: socketUtil/SocketUtil.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(OBJDIR)/swarm_ranging.o: subdir
+
 # Compile the source file into an object file
 $(OBJDIR)/control_center.o: control_center.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+subdir:
+	$(MAKE) -C gsrp
 
 # Clean up the build directory
 clean:
