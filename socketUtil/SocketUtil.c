@@ -1,5 +1,4 @@
 // communication.c
-#include "SocketUtil.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -7,6 +6,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+
+#include "SocketUtil.h"
 
 /**
  * 功能：客户端尝试向服务器建立连接

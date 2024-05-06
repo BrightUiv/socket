@@ -232,14 +232,34 @@ uint16_t uwbGetAddress()
  */
 void dwt_readrxtimestamp(uint8_t *timestamp)
 {
-  printf("read rx_timestamp\n");
+  *timestamp = rx_time_stamp;
 }
 
 /**
  * 功能：实现从socket通信的测距消息之中读取tx_timestamp
- * TODO:功能待实现
+ * 参数：txCallback()函数之中的变量的值
+ * 说明：txCallback()函数之中，接收另外一个文件之中的变量的值
  */
 void dwt_readtxtimestamp(uint8_t *timestamp)
 {
-  printf("read tx_timestamp\n");
+  *timestamp = tx_time_stamp;
+}
+
+/**
+ * 功能：socket通信，实现rangingTxTask()函数之中swarm_ranging_proc将测距消息发送给control_center进程
+ */
+int uwbSendPacketBlock(UWB_Packet_t *packet)
+{
+  //  back message，在此处进行修改需要返回给control_center进程的测距消息
+  // const char *responseMessage = "Message received successfully";
+
+  Socket_Packet_t responsePacket;
+  memset(&responsePacket, 0, sizeof(responsePacket)); // 初始化responsePacket
+
+  responsePacket.header.packetLength = sizeof(Socket_Packet_Header_t) + strlen(packet);
+  strncpy(responsePacket.payload, packet, strlen(packet)); // 复制响应消息到payload
+
+  // send back一接收到Packet，立即send给control_center进程
+  send_packet(conn, &responsePacket, responsePacket.header.packetLength);
+  return 0;
 }

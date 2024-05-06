@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <assert.h>
+
 #include "socketUtil/SocketUtil.h"
 #include "message_struct.h"
 #define SERVER_IP_ADDR "127.0.0.1"
@@ -155,14 +156,6 @@ int main(int argc, char *argv[])
 		printf("----------------------\n");
 		printf("%d\t%s\t%llx\n", party_id, rxtx_type, timestamp);
 
-		/**
-		 * 解析simulate.conf文件的一行
-		 * 得到：{srcAddr---TX/RX---timestamp}---Packet
-		 *
-		 */
-		// printf("before continue\n");
-		// continue;
-		// printf("after continue\n");
 		//  向服务器发送消息，主要是payload的部分
 		//  party_id对应src_addr,rxtx_type[0]传递的是ASCII值
 		int sent_len = sendPayloadTo(party_id, rxtx_type[0], &timestamp, sizeof(timestamp));

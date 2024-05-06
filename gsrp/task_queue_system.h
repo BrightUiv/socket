@@ -11,10 +11,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "adhocdeck.h"
 #include <apr_queue.h>
-#include <sys/time.h>
+#include "message_struct.h"
 
 /**
  * Type by which queues are referenced.  For example, a call to xQueueCreate()
@@ -53,6 +54,7 @@ static QueueHandle_t rxQueue;
 static apr_queue_t *queues[UWB_MESSAGE_TYPE_COUNT];
 static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
 
+SemaphoreHandle_t readyToSend;
 SemaphoreHandle_t xSemaphoreCreateMutex();
 void xSemaphoreDestroyMutex(SemaphoreHandle_t mutex);
 int xSemaphoreTake(SemaphoreHandle_t TfBufferMutex, TickType_t xTicksToWait);
@@ -71,10 +73,13 @@ uint16_t uwbGetAddress();
 // static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 int uwbSendPacketBlock(UWB_Packet_t *packet);
 
-void dwt_readrxtimestamp(uint8_t *timestamp); // TODO:从socket发送过来的数据包之中读取时间戳
-void dwt_readtxtimestamp(uint8_t *timestamp); // TODO:
+extern long long tx_time_stamp; // 定义在swarm_ranging_proc之中
+extern long long rx_time_stamp;
+void dwt_readrxtimestamp(uint8_t *timestamp);
+void dwt_readtxtimestamp(uint8_t *timestamp);
 
-int uwbSendPacketBlock(UWB_Packet_t *packet); // TODO:
+int uwbSendPacketBlock(UWB_Packet_t *packet); // 调用下面的函数
+extern ssize_t send_packet(Connection conn, const void *packet, size_t packet_size);
 /**
  * Type by which software timers are referenced.  For example, a call to
  * xTimerCreate() returns an TimerHandle_t variable that can then be used to
@@ -133,6 +138,4 @@ BaseType_t xQueueSendFromISR(QueueHandle_t xQueue,
 // TODO：有些需要修改
 void uwbRegisterListener(UWB_Message_Listener_t *listener);
 
-SemaphoreHandle_t readyToSend;
-
-#endif //_TASK_QUEUE_SYSTEM_H_
+#endif

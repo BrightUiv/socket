@@ -29,6 +29,8 @@
 static Neighbor_Set_t neighborSet;
 static TimerHandle_t rangingTableSetEvictionTimer;
 static SemaphoreHandle_t TfBufferMutex;
+extern SemaphoreHandle_t readyToSend;
+
 //---------------------------------------------------------------------------------------------------------
 static uint16_t MY_UWB_ADDRESS;
 
@@ -43,7 +45,6 @@ static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int rangingSeqNumber = 1;
 static uint32_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
-extern SemaphoreHandle_t readyToSend;
 
 static Ranging_Table_t EMPTY_RANGING_TABLE = {
     .neighborAddress = UWB_DEST_EMPTY,
@@ -1434,7 +1435,7 @@ static void uwbRangingTxTask(void *parameters)
 
   while (true)
   {
-    xSemaphoreTake(readyToSend, portMAX_DELAY); // TODO: control_center释放的互斥变量
+    xSemaphoreTake(readyToSend, portMAX_DELAY); // swarm_ranging_proc抢占的互斥变量
     xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
     xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
@@ -1448,9 +1449,9 @@ static void uwbRangingTxTask(void *parameters)
 
     xSemaphoreGive(neighborSet.mu);
     xSemaphoreGive(rangingTableSet.mu);
-    // xSemaphoreGive(readyToSend); // TODO:释放互斥变量
+    xSemaphoreGive(readyToSend); // swarm_ranging_proc释放互斥变量
 
-    // rangingTxCallback(txPacketCache); // TX线程调用TxCallback()函数，updateTfBuffer数组
+    rangingTxCallback(txPacketCache); // TODO:TX线程调用TxCallback()函数，updateTfBuffer数组
     vTaskDelay(taskDelay);
   }
 }
@@ -1490,7 +1491,7 @@ void rangingRxCallback(void *parameters)
   UWB_Packet_t *packet = (UWB_Packet_t *)parameters; // 涉及到回放仿真配置文件的处理内容
 
   dwTime_t rxTime;
-  dwt_readrxtimestamp((uint8_t *)&rxTime.raw); // TODO:功能待实现
+  dwt_readrxtimestamp((uint8_t *)&rxTime.raw);
 
   Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
   rxMessageWithTimestamp.rxTime = rxTime;
@@ -1506,7 +1507,7 @@ void rangingTxCallback(void *parameters)
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
 
   dwTime_t txTime;
-  dwt_readtxtimestamp((uint8_t *)&txTime.raw); // TODO:功能待实现
+  dwt_readtxtimestamp((uint8_t *)&txTime.raw); // TODO:难点：如何读取一个全局变量
 
   Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
   updateTfBuffer(timestamp);

@@ -10,6 +10,7 @@
 #include <time.h>
 #include <signal.h>
 #include <poll.h>
+
 #include "message_struct.h"
 #include "task_queue_system.h"
 #include "swarm_ranging.h"
@@ -31,6 +32,9 @@ ClientManager manager;
 /**
  * 一个服务器，它需要同时处理多个客户端连接。你可以使用 ClientManager 来跟踪每个客户端的连接状态以及服务器的监听套接字。
  */
+
+long long tx_time_stamp;
+long long rx_time_stamp;
 
 /**
  * 功能：初始化ClientManager
@@ -158,38 +162,29 @@ void handle_client_data(int idx)
 	ssize_t result = receive_packet(conn, &packet, sizeof(packet)); // connf表示申请通信的客户端
 	if (result >= 0)
 	{
-		// TODO: 调用rxCallback()
-		// 成功接收到消息，打印消息内容
 		printf("(%d) received: type=%d, timestamp=0x%llx.\n", portnum, packet.header.type, *(long long *)packet.payload);
+
 		if (packet.header.type == 'T')
 		{
-			xSemaphoreGive(readyToSend);
+			// case 1:如果control_center要求发报文，完后才能如下步骤：
+			// 0.保存tx_timestamp到临时变量
+			// 1.xSemaphoreGive()
+			// 	1.1.重写uwbSendBlock()函数，直接通过socket发送，最近版本
+			// 2. Delay(1ms)函数
+			// 3.调用TxCallback()函数
+			//	3.1重写dwt_read_tx_timestamp()函数
+			tx_time_stamp = *(long long *)packet.payload;
+			xSemaphoreGive(readyToSend); // readyToSend唤醒TXTask线程，其中txTask线程之中执行callback回调函数
 		}
 
-		// case 1:如果control_center要求发报文，完后才能如下步骤：
-		// 0.保存tx_timestamp到临时变量
-		// 1.xSemaphoreGive()
-		// 	1.1.重写uwbSendBlock()函数，直接通过socket发送，最近版本
-		// 2. Delay(1ms)函数
-		// 3.调用TxCallback()函数
-		//	3.1重写dwt_read_tx_timestamp()函数
-
-		// case 2:如果control_center要求接收报文
-		// 0. 保存rx_timestamp到临时变量
-		// 1. 接受rangingMessage到临时变量
-		// 2. 调用rxCallback()函数处理消息
-
-		//  back message，在此处进行修改需要返回给control_center进程的测距消息
-		const char *responseMessage = "Message received successfully";
-
-		Socket_Packet_t responsePacket;
-		memset(&responsePacket, 0, sizeof(responsePacket)); // 初始化responsePacket
-
-		responsePacket.header.packetLength = sizeof(Socket_Packet_Header_t) + strlen(responseMessage);
-		strncpy(responsePacket.payload, responseMessage, strlen(responseMessage)); // 复制响应消息到payload
-
-		// send back一接收到Packet，立即send给control_center进程
-		send_packet(conn, &responsePacket, responsePacket.header.packetLength);
+		if (packet.header.type == 'R')
+		{
+			// case 2:如果control_center要求swarm_ranging进程接收报文
+			// 0. 保存rx_timestamp到临时变量
+			// 1. 接受rangingMessage到临时变量
+			// 2. 调用rxCallback()函数处理消息
+			rx_time_stamp = *(long long *)packet.payload;
+		}
 	}
 	else
 	{

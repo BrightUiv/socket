@@ -34,6 +34,8 @@
     "files.associations": {
         "assert.h": "c",
         "types.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "socketutil.h": "c",
+        "adhocdeck.h": "c"
     }
 }
