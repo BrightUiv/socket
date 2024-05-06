@@ -1440,9 +1440,9 @@ static void uwbRangingTxTask(void *parameters)
     Time_t taskDelay = generateRangingMessage(rangingMessage);
     taskDelay = 0;
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
-    // uwbSendPacketBlock(&txPacketCache); // TODO: socket通信，发送给control_center进程
-    //    printRangingTableSet(&rangingTableSet);
-    //    printNeighborSet(&neighborSet);
+    uwbSendPacketBlock(&txPacketCache); // TODO: socket通信，发送给control_center进程
+    //    printRangingTableSet(&rangingTableSet);原本就注释
+    //    printNeighborSet(&neighborSet);原本就注释
 
     xSemaphoreGive(neighborSet.mu);
     xSemaphoreGive(rangingTableSet.mu);
@@ -1529,7 +1529,6 @@ int main()
   xTimerStart(rangingTableSetEvictionTimer, expiration_time2, repetition2, NULL); // finished
 
   TfBufferMutex = xSemaphoreCreateMutex(); // finished
-  // printf();
   // listener.type = UWB_RANGING_MESSAGE;
   // listener.rxQueue = NULL;           // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
   // listener.rxCb = rangingRxCallback; // TODO

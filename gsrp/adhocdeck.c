@@ -32,11 +32,11 @@ int uwbSendPacket(UWB_Packet_t *packet)
 	return xQueueSend(txQueue, packet, 0);
 }
 
-int uwbSendPacketBlock(UWB_Packet_t *packet)
-{
-	ASSERT(packet);
-	return xQueueSend(txQueue, packet, portMAX_DELAY);
-}
+// int uwbSendPacketBlock(UWB_Packet_t *packet)
+// {
+// 	ASSERT(packet);
+// 	return xQueueSend(txQueue, packet, portMAX_DELAY);
+// }
 
 int uwbSendPacketWait(UWB_Packet_t *packet, int wait)
 {
