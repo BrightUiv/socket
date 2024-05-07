@@ -107,13 +107,13 @@ static dwt_config_t uwbPhrConfig = {
 
 typedef void (*UWBCallback)(void *);
 
-typedef struct
-{
-  UWB_MESSAGE_TYPE type;
-  QueueHandle_t rxQueue;
-  UWBCallback rxCb;
-  UWBCallback txCb;
-} UWB_Message_Listener_t;
+// typedef struct
+// {
+//   UWB_MESSAGE_TYPE type;
+//   QueueHandle_t rxQueue;
+//   UWBCallback rxCb;
+//   UWBCallback txCb;
+// } UWB_Message_Listener_t;
 
 /* UWB operations */
 uint16_t uwbGetAddress();

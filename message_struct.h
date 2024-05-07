@@ -5,19 +5,17 @@
 
 enum
 {
-    TX_Command,           // 隐式枚举，0 swarm_ranging_proc的发送指令
-    RX_Command,           // 隐式枚举，1 swarm_ranging_proc的接收指令
-    Send_RangingMessage,  // 隐式枚举，2 control_center进程发送给swarm_ranging进程的packet
-    Return_RangingMessage // 隐式枚举，3 swarm_ranging进程返回给control_center进程的packet
+    Command_TX,           // 隐式枚举，0 control_center对swarm_ranging_proc的发送指令
+    Command_RX,           // 隐式枚举，1 control_center对swarm_ranging_proc的接收指令
+    RangingMessage_Send,  // 隐式枚举，2 control_center进程发送给swarm_ranging进程的packet
+    RangingMessage_Return // 隐式枚举，3 swarm_ranging进程返回给control_center进程的packet
 };
 
 typedef struct
 {
     size_t packetLength;
     int type; // 枚举类型,
-    // RX指令(control_center发给swarm_ranging_proc)、
-    // TX指令(control_center发给swarm_ranging_proc)、
-    // 返回的数据(swarm_ranging_proc返回给control_center数据)
+
 } Socket_Packet_Header_t;
 
 typedef struct

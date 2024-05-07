@@ -232,7 +232,7 @@ uint16_t uwbGetAddress()
  */
 void dwt_readrxtimestamp(uint8_t *timestamp)
 {
-  *timestamp = rx_time_stamp;
+  *timestamp = rx_timestamp;
 }
 
 /**
@@ -242,7 +242,7 @@ void dwt_readrxtimestamp(uint8_t *timestamp)
  */
 void dwt_readtxtimestamp(uint8_t *timestamp)
 {
-  *timestamp = tx_time_stamp;
+  *timestamp = tx_timestamp;
 }
 
 /**

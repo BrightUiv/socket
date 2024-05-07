@@ -73,12 +73,20 @@ uint16_t uwbGetAddress();
 // static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 int uwbSendPacketBlock(UWB_Packet_t *packet);
 
-extern long long tx_time_stamp; // 定义在swarm_ranging_proc之中
-extern long long rx_time_stamp;
+extern long long tx_timestamp; // 定义在swarm_ranging_proc之中
+extern long long rx_timestamp;
 void dwt_readrxtimestamp(uint8_t *timestamp);
 void dwt_readtxtimestamp(uint8_t *timestamp);
 
 typedef uint16_t UWB_Address_t;
+typedef struct
+{
+    UWB_MESSAGE_TYPE type;
+    QueueHandle_t rxQueue;
+    UWBCallback rxCb;
+    UWBCallback txCb;
+} UWB_Message_Listener_t;
+
 // UWB_Packet_t
 typedef struct
 {

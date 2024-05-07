@@ -33,8 +33,8 @@ ClientManager manager;
  * 一个服务器，它需要同时处理多个客户端连接。你可以使用 ClientManager 来跟踪每个客户端的连接状态以及服务器的监听套接字。
  */
 
-long long tx_time_stamp;
-long long rx_time_stamp;
+long long tx_timestamp;
+long long rx_timestamp;
 
 /**
  * 功能：初始化ClientManager
@@ -165,7 +165,7 @@ void handle_client_data(int idx)
 	{
 		printf("(%d) received: type=%d, timestamp=0x%llx.\n", portnum, packet.header.type, *(long long *)packet.payload);
 
-		if (packet.header.type == TX_Command)
+		if (packet.header.type == Command_TX)
 		{
 			// case 1:如果control_center要求发报文，完后才能如下步骤：
 			// 0.保存tx_timestamp到临时变量
@@ -174,22 +174,25 @@ void handle_client_data(int idx)
 			// 2. Delay(1ms)函数
 			// 3.调用TxCallback()函数
 			//	3.1重写dwt_read_tx_timestamp()函数
-			tx_time_stamp = *(long long *)packet.payload;
+			tx_timestamp = *(long long *)packet.payload;
+			printf("(swarm_ranging): tx_timestamp is %lld\n", tx_timestamp);
 			xSemaphoreGive(readyToSend); // readyToSend唤醒TXTask线程，其中txTask线程之中执行callback回调函数
 		}
 
-		if (packet.header.type == RX_Command)
+		if (packet.header.type == Command_RX)
 		{
 			// case 2:如果control_center要求swarm_ranging进程接收报文
 			// 0. 保存rx_timestamp到临时变量
 			// 1. 接受rangingMessage到临时变量
 			// 2. 调用rxCallback()函数处理消息
-			rx_time_stamp = *(long long *)packet.payload;
+			rx_timestamp = *(long long *)packet.payload;
+			printf("(swarm_ranging): tx_timestamp is %lld\n", rx_timestamp);
 
-			result = receive_packet(conn, &packet, sizeof(packet)); // 接收的是UWB_Packet_t类型
+			// 接收的是UWB_Packet_t类型
+			result = receive_packet(conn, &packet, sizeof(packet));
 			if (result >= 0)
 			{
-				if (packet.header.type == Send_RangingMessage)
+				if (packet.header.type == RangingMessage_Send)
 				{
 					printf("(Swarm_Ranging): recv UWB_Packet from Control_Center Send_RangingMessage\n");
 					UWB_Packet_t uwb_packet;

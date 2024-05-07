@@ -136,25 +136,25 @@ int main(int argc, char *argv[])
 		if (rxtx_type[0] == 'T')
 		{
 			// 发送时间戳
-			int sent_len = sendPayloadTo(party_id, TX_Command, &timestamp, sizeof(timestamp));
-			if (sent_len >= 0)
+			int send_len_1 = sendPayloadTo(party_id, Command_TX, &timestamp, sizeof(timestamp));
+			if (send_len_1 >= 0)
 			{
-				printf("(Control_Center): Message sent to server %d, with length %d.\n", party_id, sent_len);
+				printf("(Control_Center):TX Timestamp sent to server %d, with length %d.\n", party_id, sent_len);
 			}
 			else
 			{
-				printf("(Control_Center): Failed to send message to server %d\n", party_id);
+				printf("(Control_Center): Failed to send timestamp to server %d\n", party_id);
 			}
 		}
 		else
 		{ // rxtx_type[0] == 'R'
 
 			// 1.发送时间戳
-			int send_len;
-			send_len = sendPayloadTo(party_id, RX_Command, &timestamp, sizeof(timestamp));
-			if (send_len >= 0)
+			int send_len_2;
+			send_len_2 = sendPayloadTo(party_id, Command_RX, &timestamp, sizeof(timestamp));
+			if (send_len_2 >= 0)
 			{
-				printf("(Control_Center):Timestamp sent to server %d, with length %d.\n", party_id, sent_len);
+				printf("(Control_Center):RX Timestamp sent to server %d, with length %d.\n", party_id, sent_len);
 			}
 			else
 			{
@@ -162,8 +162,8 @@ int main(int argc, char *argv[])
 			}
 
 			// 2.发送UWB_Packet_t类型的数据
-			send_len = sendPayloadTo(party_id, Send_RangingMessage, &packet, sizeof(packet));
-			if (send_len >= 0)
+			send_len_2 = sendPayloadTo(party_id, RangingMessage_Send, &packet, sizeof(packet));
+			if (send_len_2 >= 0)
 			{
 				printf("(Control_Center): UWB_Packet sent to server %d, with length %d.\n", party_id, sent_len);
 			}
@@ -179,11 +179,11 @@ int main(int argc, char *argv[])
 		if (recv_len > 0)
 		{
 			memcpy(&packet, buffer, sizeof(packet));
-			printf("(Swarm_Ranging Send): Received from %d, message: \"%s\"\n", party_id, (char *)buffer);
+			printf("(Control Center): Received from %d, packet: \"%s\"\n", party_id, (char *)buffer);
 		}
 		else
 		{
-			printf("(Swarm_Ranging Send): Failed to receive packet from server %d\n", party_id);
+			printf("(Control Center): Failed to receive packet from server %d\n", party_id);
 		}
 	}
 
