@@ -159,12 +159,13 @@ void handle_client_data(int idx)
 {
 	Connection conn = {.sockfd = manager.fds[idx].fd};
 	Socket_Packet_t packet;
-	ssize_t result = receive_packet(conn, &packet, sizeof(packet)); // connf表示申请通信的客户端
+	ssize_t result;
+	result = receive_packet(conn, &packet, sizeof(packet)); // connf表示申请通信的客户端
 	if (result >= 0)
 	{
 		printf("(%d) received: type=%d, timestamp=0x%llx.\n", portnum, packet.header.type, *(long long *)packet.payload);
 
-		if (packet.header.type == 'T')
+		if (packet.header.type == TX_Command)
 		{
 			// case 1:如果control_center要求发报文，完后才能如下步骤：
 			// 0.保存tx_timestamp到临时变量
@@ -177,13 +178,25 @@ void handle_client_data(int idx)
 			xSemaphoreGive(readyToSend); // readyToSend唤醒TXTask线程，其中txTask线程之中执行callback回调函数
 		}
 
-		if (packet.header.type == 'R')
+		if (packet.header.type == RX_Command)
 		{
 			// case 2:如果control_center要求swarm_ranging进程接收报文
 			// 0. 保存rx_timestamp到临时变量
 			// 1. 接受rangingMessage到临时变量
 			// 2. 调用rxCallback()函数处理消息
 			rx_time_stamp = *(long long *)packet.payload;
+
+			result = receive_packet(conn, &packet, sizeof(packet)); // 接收的是UWB_Packet_t类型
+			if (result >= 0)
+			{
+				if (packet.header.type == Send_RangingMessage)
+				{
+					printf("(Swarm_Ranging): recv UWB_Packet from Control_Center Send_RangingMessage\n");
+					UWB_Packet_t uwb_packet;
+					memcpy(&uwb_packet, packet.payload, sizeof(uwb_packet));
+					rangingRxCallback(&uwb_packet); // 通过阻塞队列唤醒一个线程
+				}
+			}
 		}
 	}
 	else

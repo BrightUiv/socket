@@ -78,6 +78,22 @@ extern long long rx_time_stamp;
 void dwt_readrxtimestamp(uint8_t *timestamp);
 void dwt_readtxtimestamp(uint8_t *timestamp);
 
+typedef uint16_t UWB_Address_t;
+// UWB_Packet_t
+typedef struct
+{
+    UWB_Address_t srcAddress;  // mac address, currently using MY_UWB_ADDRESS
+    UWB_Address_t destAddress; // mac address
+    UWB_MESSAGE_TYPE type : 6;
+    uint16_t length : 10;
+} __attribute__((packed)) UWB_Packet_Header_t;
+
+typedef struct
+{
+    UWB_Packet_Header_t header; // Packet header
+    uint8_t payload[UWB_PAYLOAD_SIZE_MAX];
+} __attribute__((packed)) UWB_Packet_t;
+
 int uwbSendPacketBlock(UWB_Packet_t *packet); // 调用下面的函数
 extern ssize_t send_packet(Connection conn, const void *packet, size_t packet_size);
 /**

@@ -7,7 +7,8 @@ enum
 {
     TX_Command,           // 隐式枚举，0 swarm_ranging_proc的发送指令
     RX_Command,           // 隐式枚举，1 swarm_ranging_proc的接收指令
-    Return_RangingMessage // 隐式枚举，2 无人机返回的rangingMessage测距消息
+    Send_RangingMessage,  // 隐式枚举，2 control_center进程发送给swarm_ranging进程的packet
+    Return_RangingMessage // 隐式枚举，3 swarm_ranging进程返回给control_center进程的packet
 };
 
 typedef struct

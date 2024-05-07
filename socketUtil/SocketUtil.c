@@ -84,6 +84,10 @@ ssize_t send_packet(Connection conn, const void *packet, size_t packet_size)
     return sent_size;
 }
 
+/**
+ *  功能：用于control_center和swarm_ranging收发数据包
+ *  调用者：control_center和swarm_ranging_proc
+ */
 ssize_t receive_packet(Connection conn, const void *packet, size_t packet_size)
 {
     ssize_t recved_size = recv(conn.sockfd, packet, packet_size, 0);

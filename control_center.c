@@ -12,36 +12,11 @@
 
 #include "socketUtil/SocketUtil.h"
 #include "message_struct.h"
+#include "task_queue_system.h"
 #define SERVER_IP_ADDR "127.0.0.1"
 #define SERVER_PORT_START 50627
 
 static Connection connect_list[PROC_NUM];
-
-// 需要重新调整位置
-int getIntByIndex(char buffer[], int count_num, const char *delimiter)
-{
-	char buffer_copy[1024];
-	// 复制字符串到新的内存位置
-	strcpy(buffer_copy, buffer);
-
-	char *token;   // 分隔符之间的字符
-	int count = 0; // 重置计数器
-
-	// 使用strtok分割字符串
-	token = strtok(buffer_copy, delimiter);
-	while (token != NULL)
-	{
-		count++;
-		if (count == count_num)
-		{
-			break;
-		}
-		token = strtok(NULL, delimiter); // 继续分割剩余的字符串
-	}
-	// printf("Location %d  return   %s\n", count_num, token);
-
-	return atoi(token);
-}
 
 /**
  * 参数为：ip地址+端口号
@@ -156,28 +131,59 @@ int main(int argc, char *argv[])
 		printf("----------------------\n");
 		printf("%d\t%s\t%llx\n", party_id, rxtx_type, timestamp);
 
-		//  向服务器发送消息，主要是payload的部分
-		//  party_id对应src_addr,rxtx_type[0]传递的是ASCII值
-		int sent_len = sendPayloadTo(party_id, rxtx_type[0], &timestamp, sizeof(timestamp));
-		if (sent_len >= 0)
+		// 一、control_center进程发给swarm_ranging进程
+		UWB_Packet_t packet; // TODO:control_center收到UWB_Packet_t类型的消息
+		if (rxtx_type[0] == 'T')
 		{
-			printf("Message sent to server %d, with length %d.\n", party_id, sent_len);
+			// 发送时间戳
+			int sent_len = sendPayloadTo(party_id, TX_Command, &timestamp, sizeof(timestamp));
+			if (sent_len >= 0)
+			{
+				printf("(Control_Center): Message sent to server %d, with length %d.\n", party_id, sent_len);
+			}
+			else
+			{
+				printf("(Control_Center): Failed to send message to server %d\n", party_id);
+			}
 		}
 		else
-		{
-			printf("Failed to send message to server %d\n", party_id);
+		{ // rxtx_type[0] == 'R'
+
+			// 1.发送时间戳
+			int send_len;
+			send_len = sendPayloadTo(party_id, RX_Command, &timestamp, sizeof(timestamp));
+			if (send_len >= 0)
+			{
+				printf("(Control_Center):Timestamp sent to server %d, with length %d.\n", party_id, sent_len);
+			}
+			else
+			{
+				printf("(Control_Center):Failed to send timestamp to server %d\n", party_id);
+			}
+
+			// 2.发送UWB_Packet_t类型的数据
+			send_len = sendPayloadTo(party_id, Send_RangingMessage, &packet, sizeof(packet));
+			if (send_len >= 0)
+			{
+				printf("(Control_Center): UWB_Packet sent to server %d, with length %d.\n", party_id, sent_len);
+			}
+			else
+			{
+				printf("(Control_Center): Failed to send UWB_Packet to server %d\n", party_id);
+			}
 		}
 
-		// 一发送完就尝试从服务器接收消息
+		// 二、control_center进程收到swarm_ranging进程的消息
 		int packetType;
 		int recv_len = recvPayloadFrom(party_id, &packetType, buffer, sizeof(buffer));
 		if (recv_len > 0)
 		{
-			printf("(Control): received from %d, message: \"%s\"\n", party_id, (char *)buffer);
+			memcpy(&packet, buffer, sizeof(packet));
+			printf("(Swarm_Ranging Send): Received from %d, message: \"%s\"\n", party_id, (char *)buffer);
 		}
 		else
 		{
-			printf("Failed to receive packet from server %d\n", party_id);
+			printf("(Swarm_Ranging Send): Failed to receive packet from server %d\n", party_id);
 		}
 	}
 

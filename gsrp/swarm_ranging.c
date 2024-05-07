@@ -1480,6 +1480,7 @@ static void uwbRangingRxTask(void *parameters)
 }
 // 2024-4-30使用方法：直接调用函数
 /**
+ * 参数：UWB_Packet_t类型的数据
  * TODO:需要增加功能：从socket通信之中读取message，存放进apr-queue队列之中
  */
 void rangingRxCallback(void *parameters)
@@ -1488,7 +1489,7 @@ void rangingRxCallback(void *parameters)
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  UWB_Packet_t *packet = (UWB_Packet_t *)parameters; // 涉及到回放仿真配置文件的处理内容
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
 
   dwTime_t rxTime;
   dwt_readrxtimestamp((uint8_t *)&rxTime.raw);
